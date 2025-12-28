@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gift, Upload, CheckCircle, Camera } from 'lucide-react';
+import { Gift, Upload, CheckCircle, Camera, Loader2 } from 'lucide-react';
 import { boardOptions, subjectOptions, classOptions } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { booksApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const conditionOptions = [
   { id: 'good', label: 'Good', description: 'No damage, clean pages' },
@@ -19,30 +21,78 @@ const conditionOptions = [
 const DonateBook = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [bookName, setBookName] = useState('');
   const [subject, setSubject] = useState('');
   const [bookClass, setBookClass] = useState('');
   const [board, setBoard] = useState('');
   const [condition, setCondition] = useState('');
+  const [city, setCity] = useState('');
+  const [area, setArea] = useState('');
+  const [description, setDescription] = useState('');
+  const [images, setImages] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setImages(files);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!bookName || !subject || !bookClass || !board || !condition) {
+    if (!bookName || !subject || !bookClass || !board || !condition || images.length === 0) {
       toast({
         title: "Please fill all fields",
+        description: "All fields including at least one image are required",
         variant: "destructive",
       });
       return;
     }
 
-    setSubmitted(true);
-    toast({
-      title: "Book listed for donation!",
-      description: "Students in need can now see your book.",
-    });
+    if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to donate a book",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const bookData = {
+        title: bookName,
+        subject,
+        class_level: bookClass,
+        board,
+        condition: condition.toLowerCase(),
+        city: city || undefined,
+        area: area || undefined,
+        description: description || undefined,
+      };
+      
+      await booksApi.donate(bookData, images);
+      
+      setSubmitted(true);
+      toast({
+        title: "Book listed for donation!",
+        description: "Students in need can now see your book.",
+      });
+    } catch (error: any) {
+      console.error('Error donating book:', error);
+      toast({
+        title: "Error donating book",
+        description: error.message || 'Failed to donate book',
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -222,21 +272,93 @@ const DonateBook = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Upload photos of the book cover and inside pages
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Max 3 photos • JPG, PNG up to 5MB
-                  </p>
+                <label className="block">
+                  <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
+                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Upload photos of the book cover and inside pages
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Max 5 photos • JPG, PNG up to 5MB each
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+                {images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-3 gap-4">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="relative">
+                        <img
+                          src={URL.createObjectURL(img)}
+                          alt={`Preview ${idx + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setImages(images.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Location (Optional) */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Location (Optional)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">City</label>
+                  <Input
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="E.g., Mumbai"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Area</label>
+                  <Input
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    placeholder="E.g., Andheri West"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Description (Optional)</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Additional details about the book..."
+                    className="w-full h-24 px-4 py-3 rounded-lg border-2 border-input bg-card focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary resize-none"
+                  />
                 </div>
               </CardContent>
             </Card>
 
-            <Button type="submit" size="lg" className="w-full" variant="secondary">
-              <Gift className="h-5 w-5 mr-2" />
-              List Book for Donation
+            <Button type="submit" size="lg" className="w-full" variant="secondary" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Gift className="h-5 w-5 mr-2" />
+                  List Book for Donation
+                </>
+              )}
             </Button>
           </form>
         </div>

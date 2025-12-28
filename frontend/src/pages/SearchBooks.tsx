@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import BookCard from '@/components/shared/BookCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, X } from 'lucide-react';
-import { mockBooks, classOptions, boardOptions, subjectOptions } from '@/data/mockData';
+import { Search, Filter, X, Loader2 } from 'lucide-react';
+import { classOptions, boardOptions, subjectOptions } from '@/data/mockData';
+import { booksApi } from '@/lib/api';
+import { Book } from '@/types/api';
+import { useToast } from '@/hooks/use-toast';
 
 const SearchBooks = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,15 +17,41 @@ const SearchBooks = () => {
   const [selectedBoard, setSelectedBoard] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const filteredBooks = mockBooks.filter(book => {
-    const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         book.subject.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesClass = !selectedClass || book.class === selectedClass;
-    const matchesBoard = !selectedBoard || book.board === selectedBoard;
-    const matchesSubject = !selectedSubject || book.subject === selectedSubject;
-    
-    return matchesSearch && matchesClass && matchesBoard && matchesSubject;
+  useEffect(() => {
+    loadBooks();
+  }, [selectedClass, selectedBoard, selectedSubject]);
+
+  const loadBooks = async () => {
+    try {
+      setLoading(true);
+      const filters: Record<string, string> = {};
+      if (selectedClass) filters.class_level = selectedClass;
+      if (selectedBoard) filters.board = selectedBoard;
+      if (selectedSubject) filters.subject = selectedSubject;
+      
+      const data = await booksApi.search(filters);
+      setBooks(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error('Error loading books:', error);
+      toast({
+        title: 'Error loading books',
+        description: error.message || 'Failed to fetch books',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredBooks = books.filter(book => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return book.title.toLowerCase().includes(query) ||
+           book.subject.toLowerCase().includes(query);
   });
 
   const clearFilters = () => {
@@ -155,14 +184,23 @@ const SearchBooks = () => {
           Showing {filteredBooks.length} books near you
         </p>
 
-        {/* Books Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredBooks.map(book => (
-            <BookCard key={book.id} book={book} />
-          ))}
-        </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
 
-        {filteredBooks.length === 0 && (
+        {/* Books Grid */}
+        {!loading && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredBooks.map(book => (
+              <BookCard key={book.id} book={book} />
+            ))}
+          </div>
+        )}
+
+        {!loading && filteredBooks.length === 0 && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <Search className="h-8 w-8 text-muted-foreground" />

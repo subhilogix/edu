@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, CheckCircle } from 'lucide-react';
-import { mockBooks } from '@/data/mockData';
+import { ArrowLeft, MapPin, CheckCircle, Loader2 } from 'lucide-react';
+import { booksApi, requestsApi } from '@/lib/api';
+import { Book } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pickupOptions = [
   { id: 'school', label: 'School Library', description: 'Meet at your school library' },
@@ -20,14 +22,40 @@ const RequestBook = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
+  const [book, setBook] = useState<Book | null>(null);
+  const [loading, setLoading] = useState(true);
   const [reason, setReason] = useState('');
   const [pickupPreference, setPickupPreference] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const book = mockBooks.find(b => b.id === id);
+  useEffect(() => {
+    if (id) {
+      loadBook();
+    }
+  }, [id]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const loadBook = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await booksApi.getById(id);
+      setBook(data);
+    } catch (error: any) {
+      console.error('Error loading book:', error);
+      toast({
+        title: 'Error loading book',
+        description: error.message || 'Failed to fetch book details',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!reason.trim() || !pickupPreference) {
@@ -39,12 +67,46 @@ const RequestBook = () => {
       return;
     }
 
-    setSubmitted(true);
-    toast({
-      title: "Request submitted!",
-      description: "We'll notify you once the donor responds.",
-    });
+    if (!book || !user) {
+      toast({
+        title: "Error",
+        description: "Please log in to request a book",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await requestsApi.create(book.id, book.donor_uid);
+      setSubmitted(true);
+      toast({
+        title: "Request submitted!",
+        description: "We'll notify you once the donor responds.",
+      });
+    } catch (error: any) {
+      console.error('Error submitting request:', error);
+      toast({
+        title: "Error submitting request",
+        description: error.message || 'Failed to submit request',
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header userType="student" userName="Alex" />
+        <main className="flex-1 container py-8 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!book) {
     return (
@@ -121,17 +183,26 @@ const RequestBook = () => {
           <Card variant="outlined" className="mb-8">
             <CardContent className="p-4 flex gap-4">
               <div className="w-16 h-20 rounded-lg bg-muted overflow-hidden shrink-0">
-                <img src={book.coverImage} alt={book.title} className="w-full h-full object-cover" />
+                <img 
+                  src={book.image_urls?.[0] || '/placeholder.svg'} 
+                  alt={book.title} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/placeholder.svg';
+                  }}
+                />
               </div>
               <div>
                 <h3 className="font-display font-bold">{book.title}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {book.subject} • Class {book.class} • {book.board}
+                  {book.subject} • Class {book.class_level} • {book.board}
                 </p>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                  <MapPin className="h-3 w-3" />
-                  <span>{book.distance} away</span>
-                </div>
+                {(book.area || book.city) && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>{book.area || ''}{book.city ? (book.area ? `, ${book.city}` : book.city) : ''}</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -191,8 +262,15 @@ const RequestBook = () => {
               </CardContent>
             </Card>
 
-            <Button type="submit" size="lg" className="w-full">
-              Submit Request
+            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                'Submit Request'
+              )}
             </Button>
           </form>
         </div>

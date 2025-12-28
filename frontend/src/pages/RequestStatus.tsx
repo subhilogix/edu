@@ -1,11 +1,15 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, CheckCircle, XCircle, MessageCircle, MapPin } from 'lucide-react';
-import { mockRequests } from '@/data/mockData';
+import { Clock, CheckCircle, XCircle, MessageCircle, MapPin, Loader2 } from 'lucide-react';
+import { requestsApi, booksApi } from '@/lib/api';
+import { BookRequest } from '@/types/api';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusConfig = {
   pending: {
@@ -32,6 +36,53 @@ const statusConfig = {
 };
 
 const RequestStatus = () => {
+  const [requests, setRequests] = useState<BookRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [bookTitles, setBookTitles] = useState<Record<string, string>>({});
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      loadRequests();
+    }
+  }, [user]);
+
+  const loadRequests = async () => {
+    try {
+      setLoading(true);
+      const data = await requestsApi.list() as BookRequest[];
+      const requestsList = Array.isArray(data) ? data : [];
+      setRequests(requestsList);
+      
+      // Load book titles for each request
+      const titles: Record<string, string> = {};
+      for (const req of requestsList) {
+        try {
+          const book = await booksApi.getById(req.book_id) as any;
+          titles[req.id] = book.title || 'Unknown Book';
+        } catch {
+          titles[req.id] = 'Unknown Book';
+        }
+      }
+      setBookTitles(titles);
+    } catch (error: any) {
+      console.error('Error loading requests:', error);
+      toast({
+        title: 'Error loading requests',
+        description: error.message || 'Failed to fetch requests',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRequests = selectedStatus === 'all' 
+    ? requests 
+    : requests.filter(r => r.status === selectedStatus);
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header userType="student" userName="Alex" />
@@ -44,21 +95,46 @@ const RequestStatus = () => {
 
         {/* Status Filter Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          <Badge variant="default" className="cursor-pointer">All ({mockRequests.length})</Badge>
-          <Badge variant="outline" className="cursor-pointer">
-            Pending ({mockRequests.filter(r => r.status === 'pending').length})
+          <Badge 
+            variant={selectedStatus === 'all' ? 'default' : 'outline'} 
+            className="cursor-pointer"
+            onClick={() => setSelectedStatus('all')}
+          >
+            All ({requests.length})
           </Badge>
-          <Badge variant="outline" className="cursor-pointer">
-            Approved ({mockRequests.filter(r => r.status === 'approved').length})
+          <Badge 
+            variant={selectedStatus === 'pending' ? 'default' : 'outline'} 
+            className="cursor-pointer"
+            onClick={() => setSelectedStatus('pending')}
+          >
+            Pending ({requests.filter(r => r.status === 'pending').length})
           </Badge>
-          <Badge variant="outline" className="cursor-pointer">
-            Rejected ({mockRequests.filter(r => r.status === 'rejected').length})
+          <Badge 
+            variant={selectedStatus === 'approved' ? 'default' : 'outline'} 
+            className="cursor-pointer"
+            onClick={() => setSelectedStatus('approved')}
+          >
+            Approved ({requests.filter(r => r.status === 'approved').length})
+          </Badge>
+          <Badge 
+            variant={selectedStatus === 'rejected' ? 'default' : 'outline'} 
+            className="cursor-pointer"
+            onClick={() => setSelectedStatus('rejected')}
+          >
+            Rejected ({requests.filter(r => r.status === 'rejected').length})
           </Badge>
         </div>
 
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
         {/* Request Cards */}
-        <div className="space-y-4">
-          {mockRequests.map(request => {
+        {!loading && filteredRequests.length > 0 && (
+          <div className="space-y-4">
+            {filteredRequests.map(request => {
             const status = statusConfig[request.status];
             const StatusIcon = status.icon;
 
@@ -75,19 +151,16 @@ const RequestStatus = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <h3 className="font-display font-bold text-lg truncate">
-                          {request.bookTitle}
+                          {bookTitles[request.id] || 'Loading...'}
                         </h3>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">
-                        Requested on {new Date(request.requestDate).toLocaleDateString('en-US', {
+                        Requested on {request.created_at ? new Date(request.created_at).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'
-                        })}
-                      </p>
-                      <p className="text-sm text-muted-foreground line-clamp-1">
-                        <strong>Reason:</strong> {request.reason}
+                        }) : 'N/A'}
                       </p>
                     </div>
 
@@ -101,14 +174,12 @@ const RequestStatus = () => {
                               Chat
                             </Button>
                           </Link>
-                          {request.pickupLocation && (
-                            <Link to={`/pickup/${request.id}`}>
-                              <Button variant="outline" size="sm" className="gap-1">
-                                <MapPin className="h-4 w-4" />
-                                Pickup
-                              </Button>
-                            </Link>
-                          )}
+                          <Link to={`/pickup/${request.id}`}>
+                            <Button variant="outline" size="sm" className="gap-1">
+                              <MapPin className="h-4 w-4" />
+                              Pickup
+                            </Button>
+                          </Link>
                         </>
                       )}
                       {request.status === 'pending' && (
@@ -126,31 +197,14 @@ const RequestStatus = () => {
                     </div>
                   </div>
 
-                  {/* Approved Details */}
-                  {request.status === 'approved' && request.pickupLocation && (
-                    <div className="mt-4 p-3 rounded-lg bg-success/5 border border-success/20 flex items-center gap-3">
-                      <MapPin className="h-5 w-5 text-success shrink-0" />
-                      <div className="text-sm">
-                        <p className="font-medium">Pickup Location: {request.pickupLocation}</p>
-                        {request.pickupDate && (
-                          <p className="text-muted-foreground">
-                            Scheduled: {new Date(request.pickupDate).toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             );
           })}
-        </div>
+          </div>
+        )}
 
-        {mockRequests.length === 0 && (
+        {!loading && filteredRequests.length === 0 && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <Clock className="h-8 w-8 text-muted-foreground" />
