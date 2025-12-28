@@ -21,6 +21,15 @@ try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     googleProvider = new GoogleAuthProvider();
+    
+    // Set custom parameters for Google sign-in
+    googleProvider.setCustomParameters({
+      prompt: 'select_account', // Always show account picker
+    });
+    
+    // Add scopes
+    googleProvider.addScope('profile');
+    googleProvider.addScope('email');
   } else {
     console.warn('Firebase configuration is missing. Please set environment variables.');
   }
@@ -30,25 +39,53 @@ try {
 
 export { auth, googleProvider };
 
+// Check if Firebase is initialized
+export const isFirebaseInitialized = (): boolean => {
+  return auth !== null && googleProvider !== null;
+};
+
+// Get Firebase initialization status message
+export const getFirebaseInitError = (): string | null => {
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+    return 'Firebase configuration is missing. Please set VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID in your .env file.';
+  }
+  if (!auth || !googleProvider) {
+    return 'Firebase failed to initialize. Please check your environment variables and Firebase configuration.';
+  }
+  return null;
+};
+
 // Auth helper functions
 export const signInWithGoogle = async () => {
-  if (!auth || !googleProvider) throw new Error('Firebase not initialized');
+  const initError = getFirebaseInitError();
+  if (initError || !auth || !googleProvider) {
+    throw new Error(initError || 'Firebase not initialized. Please configure Firebase environment variables.');
+  }
   const { signInWithPopup } = await import('firebase/auth');
   return signInWithPopup(auth, googleProvider);
 };
 
 export const signInWithEmail = async (email: string, password: string) => {
-  if (!auth) throw new Error('Firebase not initialized');
+  const initError = getFirebaseInitError();
+  if (initError || !auth) {
+    throw new Error(initError || 'Firebase not initialized. Please configure Firebase environment variables.');
+  }
   return signInWithEmailAndPassword(auth, email, password);
 };
 
 export const signUpWithEmail = async (email: string, password: string) => {
-  if (!auth) throw new Error('Firebase not initialized');
+  const initError = getFirebaseInitError();
+  if (initError || !auth) {
+    throw new Error(initError || 'Firebase not initialized. Please configure Firebase environment variables.');
+  }
   return createUserWithEmailAndPassword(auth, email, password);
 };
 
 export const signOut = async () => {
-  if (!auth) throw new Error('Firebase not initialized');
+  const initError = getFirebaseInitError();
+  if (initError || !auth) {
+    throw new Error(initError || 'Firebase not initialized. Please configure Firebase environment variables.');
+  }
   return firebaseSignOut(auth);
 };
 
