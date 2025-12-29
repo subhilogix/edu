@@ -4,12 +4,13 @@ import StatCard from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Wallet, Leaf, Award, TreeDeciduous, Recycle } from 'lucide-react';
 import { mockStudentImpact } from '@/data/mockData';
+import { auth } from '@/lib/firebase';
 
 const StudentImpact = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header userType="student" userName="Alex" />
-      
+      <Header userType="student" userName={auth.currentUser?.displayName} />
+
       <main className="flex-1 container py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-display font-bold mb-2">Your Impact Dashboard</h1>

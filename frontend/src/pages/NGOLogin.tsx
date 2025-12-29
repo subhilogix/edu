@@ -6,18 +6,46 @@ import { Users, ArrowLeft } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { authApi } from '@/lib/api';
 
 const NGOLogin = () => {
   const navigate = useNavigate();
+  const auth = getAuth();
 
-  const handleLogin = () => {
-    navigate('/ngo-dashboard');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [orgName, setOrgName] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+
+      // 1️⃣ Firebase email/password login
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+
+      // 2️⃣ Get ID token
+      const token = await cred.user.getIdToken();
+
+      // 3️⃣ Bootstrap NGO in backend
+      await authApi.bootstrap('ngo');
+
+      // 4️⃣ Navigate
+      navigate('/ngo-dashboard');
+    } catch (err) {
+      console.error('NGO login failed:', err);
+      alert('Invalid credentials or NGO name');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      
+
       <main className="flex-1 container py-12">
         <div className="max-w-md mx-auto">
           <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-8">
@@ -25,56 +53,44 @@ const NGOLogin = () => {
             Back to home
           </Link>
 
-          <Card variant="elevated" className="overflow-hidden">
-            <div className="h-2 gradient-eco" />
-            <CardHeader className="text-center pb-4">
-              <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-4">
-                <Users className="h-8 w-8 text-success" />
-              </div>
-              <CardTitle className="text-2xl">NGO / Institution Login</CardTitle>
-              <CardDescription>
-                Access your coordinator dashboard to manage book distribution
-              </CardDescription>
+          <Card variant="elevated">
+            <CardHeader className="text-center">
+              <Users className="mx-auto h-8 w-8 text-success" />
+              <CardTitle>NGO / Institution Login</CardTitle>
+              <CardDescription>Manage book distribution</CardDescription>
             </CardHeader>
+
             <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Organization Email</label>
-                  <Input type="email" placeholder="coordinator@organization.org" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Password</label>
-                  <Input type="password" placeholder="••••••••" />
-                </div>
-                <Button 
-                  variant="success" 
-                  className="w-full"
-                  onClick={handleLogin}
-                >
-                  Login to Dashboard
-                </Button>
-              </div>
-              
-              <div className="text-center space-y-2 pt-4 border-t border-border">
-                <p className="text-sm text-muted-foreground">
-                  New organization?{' '}
-                  <a href="#" className="text-primary hover:underline font-medium">
-                    Apply for registration
-                  </a>
-                </p>
-                <a href="#" className="text-sm text-muted-foreground hover:text-primary">
-                  Forgot password?
-                </a>
-              </div>
+              <Input
+                placeholder="Organization Name"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+              />
+
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+
+              <Button
+                variant="success"
+                className="w-full"
+                disabled={loading}
+                onClick={handleLogin}
+              >
+                {loading ? 'Logging in...' : 'Login to Dashboard'}
+              </Button>
             </CardContent>
           </Card>
-
-          <div className="mt-8 p-4 rounded-xl bg-muted/50 text-center">
-            <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Are you a student?</strong>{' '}
-              <Link to="/" className="text-primary hover:underline">Login here</Link> to find or donate books.
-            </p>
-          </div>
         </div>
       </main>
 

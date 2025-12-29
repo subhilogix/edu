@@ -79,7 +79,7 @@ const Footer = () => {
 
         <div className="border-t border-border mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-xs text-muted-foreground">
-            © 2024 EduCycle. Made with 💚 for students everywhere.
+            Made with 💚 for students everywhere.
           </p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Leaf className="h-3 w-3 text-success" />

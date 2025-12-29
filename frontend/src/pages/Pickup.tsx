@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, MapPin, CheckCircle, Camera, Upload } from 'lucide-react';
 import { mockRequests } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
 
 const Pickup = () => {
   const { requestId } = useParams();
@@ -30,7 +31,7 @@ const Pickup = () => {
   if (!request || request.status !== 'approved') {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" userName="Alex" />
+        <Header userType="student" userName={auth.currentUser?.displayName} />
         <main className="flex-1 container py-8 text-center">
           <h1 className="text-2xl font-display font-bold mb-4">Request not found</h1>
           <Link to="/request-status">
@@ -45,7 +46,7 @@ const Pickup = () => {
   if (confirmed) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" userName="Alex" />
+        <Header userType="student" userName={auth.currentUser?.displayName} />
         <main className="flex-1 container py-8">
           <div className="max-w-lg mx-auto text-center">
             <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-6 animate-bounce-soft">
@@ -65,8 +66,8 @@ const Pickup = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header userType="student" userName="Alex" />
-      
+      <Header userType="student" userName={auth.currentUser?.displayName} />
+
       <main className="flex-1 container py-8">
         <Link to="/request-status" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6">
           <ArrowLeft className="h-4 w-4" />

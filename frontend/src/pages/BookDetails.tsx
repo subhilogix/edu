@@ -9,6 +9,7 @@ import { ArrowLeft, MapPin, BookOpen, Shield, Loader2 } from 'lucide-react';
 import { booksApi } from '@/lib/api';
 import { Book } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
 
 const conditionVariant: Record<string, 'good' | 'usable' | 'damaged'> = {
   good: 'good',
@@ -53,7 +54,7 @@ const BookDetails = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" userName="Alex" />
+        <Header userType="student" userName={auth.currentUser?.displayName} />
         <main className="flex-1 container py-8 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
@@ -65,7 +66,7 @@ const BookDetails = () => {
   if (!book) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" userName="Alex" />
+        <Header userType="student" userName={auth.currentUser?.displayName} />
         <main className="flex-1 container py-8 text-center">
           <h1 className="text-2xl font-display font-bold mb-4">Book not found</h1>
           <Link to="/search-books">
@@ -79,7 +80,7 @@ const BookDetails = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header userType="student" userName="Alex" />
+      <Header userType="student" userName={auth.currentUser?.displayName} />
       
       <main className="flex-1 container py-8">
         <Link to="/search-books" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6">

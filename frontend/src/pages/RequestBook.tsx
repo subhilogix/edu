@@ -11,6 +11,7 @@ import { booksApi, requestsApi } from '@/lib/api';
 import { Book } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { auth } from '@/lib/firebase';
 
 const pickupOptions = [
   { id: 'school', label: 'School Library', description: 'Meet at your school library' },
@@ -42,7 +43,7 @@ const RequestBook = () => {
     try {
       setLoading(true);
       const data = await booksApi.getById(id);
-      setBook(data);
+      setBook(data as Book);
     } catch (error: any) {
       console.error('Error loading book:', error);
       toast({
@@ -99,7 +100,7 @@ const RequestBook = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" userName="Alex" />
+        <Header userType="student" userName={auth.currentUser?.displayName} />
         <main className="flex-1 container py-8 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
@@ -111,7 +112,7 @@ const RequestBook = () => {
   if (!book) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" userName="Alex" />
+        <Header userType="student" userName={auth.currentUser?.displayName} />
         <main className="flex-1 container py-8 text-center">
           <h1 className="text-2xl font-display font-bold mb-4">Book not found</h1>
           <Link to="/search-books">
@@ -126,7 +127,8 @@ const RequestBook = () => {
   if (submitted) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" userName="Alex" />
+        <Header userType="student" userName={auth.currentUser?.displayName}
+ />
         <main className="flex-1 container py-8">
           <div className="max-w-lg mx-auto text-center">
             <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-6 animate-bounce-soft">
@@ -165,8 +167,8 @@ const RequestBook = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header userType="student" userName="Alex" />
-      
+      <Header userType="student" userName={auth.currentUser?.displayName} />
+
       <main className="flex-1 container py-8">
         <Link to={`/book/${id}`} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6">
           <ArrowLeft className="h-4 w-4" />

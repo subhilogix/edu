@@ -1,20 +1,21 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, onAuthChange } from '@/lib/firebase';
-import { authApi } from '@/lib/api';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from 'react';
+import { User } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  role: string | null;
+  role: 'student' | 'ngo' | null;
+  organizationName: string | null;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  role: null,
-});
-
-export const useAuth = () => useContext(AuthContext);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -23,36 +24,46 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<string | null>(null);
+
+  // These will be useful for NGO flow
+  const [role, setRole] = useState<'student' | 'ngo' | null>(null);
+  const [organizationName, setOrganizationName] = useState<string | null>(null);
+
+  const auth = getAuth();
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
       setLoading(false);
 
-      if (user) {
-        // Bootstrap user on backend if needed
-        try {
-          await authApi.bootstrap('student'); // Default role, can be changed
-        } catch (error) {
-          console.error('Failed to bootstrap user:', error);
-        }
-
-        // Get user role from backend if needed
-        // For now, we'll default to 'student' or get it from user claims
-        // This can be enhanced based on your auth structure
-      } else {
+      if (!firebaseUser) {
+        // Reset when logged out
         setRole(null);
+        setOrganizationName(null);
       }
     });
 
-    return () => unsubscribe();
-  }, []);
+    return unsubscribe;
+  }, [auth]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, role }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        role,
+        organizationName,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
