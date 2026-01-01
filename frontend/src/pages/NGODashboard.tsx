@@ -1,17 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ActionCard from '@/components/shared/ActionCard';
 import StatCard from '@/components/shared/StatCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Package, Truck, Send, BarChart3, Users, BookOpen, Leaf, Loader2, Clock, CheckCircle } from 'lucide-react';
+import { Package, Truck, Send, BarChart3, Users, BookOpen, Leaf, Loader2, Clock, CheckCircle, Search } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ngoApi } from '@/lib/api';
 
 const NGODashboard = () => {
+  const navigate = useNavigate();
+  const { role, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useUserProfile();
+
+  useEffect(() => {
+    if (!authLoading && role === 'student') {
+      navigate('/student-home');
+    }
+  }, [role, authLoading, navigate]);
+
   const orgName = profile?.organization_name || 'Organization';
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +65,7 @@ const NGODashboard = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header userType="ngo" userName={orgName} />
-      
+
       <main className="flex-1 container py-8">
         {/* Welcome */}
         <section className="mb-10">
@@ -110,18 +121,18 @@ const NGODashboard = () => {
           <h2 className="text-xl font-display font-bold mb-6">Quick Actions</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <ActionCard
-              title="Request Books"
-              description="Bulk request books for your students"
-              icon={Package}
-              to="/bulk-request"
+              title="Find Books"
+              description="Request individual books for students"
+              icon={Search}
+              to="/ngo-find-books"
               iconColor="text-primary"
               iconBgColor="bg-primary/10"
             />
             <ActionCard
-              title="Collect Books"
-              description="View and manage pending collections"
+              title="Track Requests"
+              description="Manage pickups and collection status"
               icon={Truck}
-              to="/ngo-collection"
+              to="/ngo-my-requests"
               iconColor="text-secondary"
               iconBgColor="bg-secondary/20"
             />
@@ -144,48 +155,7 @@ const NGODashboard = () => {
           </div>
         </section>
 
-        {/* Recent Requests */}
-        {requests.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-display font-bold">Recent Requests</h2>
-              <Link to="/ngo-approval-status">
-                <Button variant="outline" size="sm">
-                  View All
-                </Button>
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {requests.slice(0, 3).map(request => {
-                const fulfilled = request.fulfilled || 0;
-                const quantity = request.quantity || 0;
-                const statusBadge = request.status === 'completed' 
-                  ? <Badge variant="approved">Completed</Badge>
-                  : request.status === 'open'
-                  ? <Badge variant="pending">Pending</Badge>
-                  : <Badge variant="approved">Partial</Badge>;
-                
-                return (
-                  <Card key={request.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium">
-                            {request.subject} - Class {request.class_level} ({request.board})
-                          </h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {fulfilled} / {quantity} books fulfilled
-                          </p>
-                        </div>
-                        {statusBadge}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
-        )}
+
 
         {/* Tips */}
         <section className="bg-gradient-to-r from-success/5 to-primary/5 rounded-2xl p-6 md:p-8">
@@ -193,7 +163,7 @@ const NGODashboard = () => {
           <div className="grid md:grid-cols-2 gap-4 text-sm">
             <div className="bg-card rounded-xl p-4 shadow-soft">
               <p className="text-muted-foreground">
-                <strong className="text-foreground">Bulk Requests:</strong> You can request books for multiple students at once to streamline your operations.
+                <strong className="text-foreground">Individual Requests:</strong> You can now request specific books and quantities for your students.
               </p>
             </div>
             <div className="bg-card rounded-xl p-4 shadow-soft">

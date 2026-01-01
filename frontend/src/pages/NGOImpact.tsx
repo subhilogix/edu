@@ -1,13 +1,27 @@
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import StatCard from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, BookOpen, Wallet, Leaf, TreeDeciduous, Recycle, TrendingUp, Loader2 } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useEffect } from 'react';
+import { mockNGOStats } from '@/data/mockData';
 
 const NGOImpact = () => {
-  const { profile, loading } = useUserProfile();
+  const navigate = useNavigate();
+  const { role, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useUserProfile();
+
+  useEffect(() => {
+    if (!authLoading && role === 'student') {
+      navigate('/student-impact');
+    }
+  }, [role, authLoading, navigate]);
+
   const orgName = profile?.organization_name || 'Organization';
+  const loading = authLoading || profileLoading;
 
   if (loading) {
     return (
@@ -24,7 +38,7 @@ const NGOImpact = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header userType="ngo" userName={orgName} />
-      
+
       <main className="flex-1 container py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-display font-bold mb-2">Impact Report</h1>
@@ -141,7 +155,7 @@ const NGOImpact = () => {
                       <span className="font-medium">{item.count} books</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className={`h-full ${item.color} rounded-full`}
                         style={{ width: `${(item.count / 850) * 100}%` }}
                       />

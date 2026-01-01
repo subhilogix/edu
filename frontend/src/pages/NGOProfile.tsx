@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,10 +11,19 @@ import { ngoApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 const NGOProfile = () => {
-  const { user } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useUserProfile();
   const { toast } = useToast();
-  
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && role === 'student') {
+      navigate('/student-home');
+    }
+  }, [role, authLoading, navigate]);
+
+  const loadingState = authLoading || profileLoading;
+
   const [bulkRequests, setBulkRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,7 +31,7 @@ const NGOProfile = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const requests = await ngoApi.listBulkRequests().catch(() => []);
+        const requests = (await ngoApi.listBulkRequests().catch(() => [])) as any[];
         setBulkRequests(requests || []);
       } catch (error) {
         console.error('Error loading profile data:', error);
@@ -40,7 +50,7 @@ const NGOProfile = () => {
     }
   }, [user, toast]);
 
-  if (profileLoading || loading) {
+  if (loadingState || loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header userType="ngo" />
@@ -56,7 +66,7 @@ const NGOProfile = () => {
   const email = user?.email || profile?.email || 'Not available';
   const city = profile?.city || 'Not specified';
   const area = profile?.area || 'Not specified';
-  
+
   const totalBooksDistributed = bulkRequests.reduce((sum, r) => sum + (r.fulfilled || 0), 0);
   const totalBooksCollected = bulkRequests.filter(r => r.status === 'fulfilled').length;
   const impactScore = totalBooksDistributed * 10 + totalBooksCollected * 5;
@@ -142,7 +152,7 @@ const NGOProfile = () => {
             <CardContent>
               {bulkRequests.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  No bulk requests yet. Create your first bulk request to get started!
+                  No bulk requests yet.
                 </p>
               ) : (
                 <div className="space-y-3">

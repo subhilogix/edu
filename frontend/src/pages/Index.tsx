@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,8 +20,94 @@ const Index = () => {
   // Email Auth State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [city, setCity] = useState('');
+  const [area, setArea] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [isSignUpMode, setIsSignUpMode] = useState(false);
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({ title: 'Error', description: 'Please enter your email', variant: 'destructive' });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    try {
+      setIsEmailLoading(true);
+      await authApi.sendOtp(normalizedEmail);
+      setOtpSent(true);
+      toast({
+        title: 'OTP Sent',
+        description: 'Please check your email for the 6-digit verification code.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send OTP',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+  const handleVerifyAndAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp) {
+      toast({ title: 'Error', description: 'Please enter the OTP', variant: 'destructive' });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      setIsEmailLoading(true);
+      let customToken;
+
+      if (isSignUpMode) {
+        if (!password || !fullName || !city || !area) {
+          toast({ title: 'Error', description: 'Please fill all fields', variant: 'destructive' });
+          return;
+        }
+
+        const result = (await authApi.registerWithOtp({
+          email: normalizedEmail,
+          otp,
+          password,
+          role: 'student',
+          metadata: { fullName, city, area }
+        })) as any;
+        customToken = result.custom_token;
+      } else {
+        const result = (await authApi.loginWithOtp(normalizedEmail, otp)) as any;
+        customToken = result.custom_token;
+      }
+
+      if (customToken) {
+        const { signInWithCustomToken } = await import('@/lib/firebase');
+        await signInWithCustomToken(customToken);
+
+        toast({
+          title: isSignUpMode ? 'Account Created' : 'Welcome Back',
+          description: `Signed in as ${email}`,
+        });
+        navigate('/student-home');
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error);
+      toast({
+        title: 'Authentication Failed',
+        description: error.message || 'Verification failed. Please check your OTP.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
 
   const handleGoogleLogin = async () => {
     // Check Firebase initialization first
@@ -61,51 +148,7 @@ const Index = () => {
     }
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast({ title: 'Error', description: 'Please enter email and password', variant: 'destructive' });
-      return;
-    }
 
-    try {
-      setIsEmailLoading(true);
-      let result;
-
-      if (isSignUpMode) {
-        result = await signUpWithEmail(email, password);
-      } else {
-        result = await signInWithEmail(email, password);
-      }
-
-      const user = result.user;
-
-      try {
-        await authApi.bootstrap('student');
-      } catch (error) {
-        console.error('Bootstrap error:', error);
-      }
-
-      toast({
-        title: isSignUpMode ? 'Account Created' : 'Welcome Back',
-        description: `Signed in as ${user.email}`,
-      });
-
-      navigate('/student-home');
-    } catch (error: any) {
-      console.error('Email auth error:', error);
-      let errorMessage = isSignUpMode ? 'Sign-up failed' : 'Login failed';
-
-      if (error.code === 'auth/wrong-password') errorMessage = 'Incorrect password';
-      else if (error.code === 'auth/user-not-found') errorMessage = 'User not found. Please sign up.';
-      else if (error.code === 'auth/email-already-in-use') errorMessage = 'Email already in use. Please login.';
-      else if (error.code === 'auth/weak-password') errorMessage = 'Password should be at least 6 characters.';
-
-      toast({ title: 'Authentication Error', description: errorMessage, variant: 'destructive' });
-    } finally {
-      setIsEmailLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -189,40 +232,112 @@ const Index = () => {
                   <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or with Email</span></div>
                 </div>
 
-                <form onSubmit={handleEmailAuth} className="space-y-3">
-                  <Input
-                    type="email"
-                    placeholder="Email Address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={isEmailLoading || isGoogleLoading}
-                  />
-                  <Input
-                    type="password"
-                    placeholder={isSignUpMode ? "Create Password (min 6 chars)" : "Password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={isEmailLoading || isGoogleLoading}
-                  />
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isEmailLoading || isGoogleLoading}
-                  >
-                    {isEmailLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      isSignUpMode ? 'Sign Up' : 'Login'
-                    )}
-                  </Button>
+                <form onSubmit={otpSent ? handleVerifyAndAuth : handleSendOtp} className="space-y-3">
+                  {!otpSent ? (
+                    <>
+                      <Input
+                        type="email"
+                        placeholder="Email Address"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        disabled={isEmailLoading || isGoogleLoading}
+                      />
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={isEmailLoading || isGoogleLoading}
+                      >
+                        {isEmailLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          'Send OTP'
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="bg-primary/5 p-3 rounded-lg mb-2">
+                        <p className="text-xs text-center text-muted-foreground">
+                          OTP sent to <span className="font-medium text-foreground">{email}</span>
+                          <button
+                            type="button"
+                            onClick={() => setOtpSent(false)}
+                            className="ml-2 text-primary hover:underline"
+                          >
+                            Change
+                          </button>
+                        </p>
+                      </div>
+
+                      <Input
+                        placeholder="Enter 6-digit OTP"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        required
+                        maxLength={6}
+                        disabled={isEmailLoading || isGoogleLoading}
+                        className="text-center text-lg tracking-widest font-bold"
+                      />
+
+                      {isSignUpMode && (
+                        <>
+                          <Input
+                            placeholder="Full Name"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            required
+                            disabled={isEmailLoading || isGoogleLoading}
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <Input
+                              placeholder="City"
+                              value={city}
+                              onChange={(e) => setCity(e.target.value)}
+                              required
+                              disabled={isEmailLoading || isGoogleLoading}
+                            />
+                            <Input
+                              placeholder="Area"
+                              value={area}
+                              onChange={(e) => setArea(e.target.value)}
+                              required
+                              disabled={isEmailLoading || isGoogleLoading}
+                            />
+                          </div>
+                          <Input
+                            type="password"
+                            placeholder="Create Password (min 6 chars)"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            disabled={isEmailLoading || isGoogleLoading}
+                          />
+                        </>
+                      )}
+
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={isEmailLoading || isGoogleLoading}
+                      >
+                        {isEmailLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          isSignUpMode ? 'Verify & Sign Up' : 'Verify & Login'
+                        )}
+                      </Button>
+                    </>
+                  )}
                 </form>
 
                 <div className="text-center text-sm">
                   <span className="text-muted-foreground">{isSignUpMode ? 'Already have an account? ' : 'New to EduCycle? '}</span>
                   <button
-                    onClick={() => setIsSignUpMode(!isSignUpMode)}
+                    onClick={() => {
+                      setIsSignUpMode(!isSignUpMode);
+                      setOtpSent(false); // Reset OTP if switching modes
+                    }}
                     className="text-primary hover:underline font-medium"
                     type="button"
                   >
@@ -262,7 +377,7 @@ const Index = () => {
         </section>
 
         {/* Features */}
-        <section className="container py-16">
+        < section className="container py-16" >
           <div className="text-center mb-12">
             <h2 className="text-3xl font-display font-bold mb-4">How EduCycle Works</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
@@ -301,11 +416,11 @@ const Index = () => {
               </p>
             </div>
           </div>
-        </section>
-      </main>
+        </section >
+      </main >
 
       <Footer />
-    </div>
+    </div >
   );
 };
 

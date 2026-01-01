@@ -6,9 +6,10 @@ import { Users, ArrowLeft, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signInWithEmail, signUpWithEmail, isFirebaseInitialized, getFirebaseInitError } from '@/lib/firebase';
 import { authApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const NGOLogin = () => {
@@ -20,114 +21,92 @@ const NGOLogin = () => {
   const [orgName, setOrgName] = useState('');
   const [city, setCity] = useState('');
   const [area, setArea] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Check Firebase initialization
-    if (!isFirebaseInitialized()) {
-      const errorMsg = getFirebaseInitError();
-      toast({
-        title: 'Firebase not configured',
-        description: errorMsg || 'Please configure Firebase environment variables',
-        variant: 'destructive',
-      });
+    if (!email) {
+      toast({ title: 'Error', description: 'Please enter organization email', variant: 'destructive' });
       return;
     }
 
-    // Validation
-    if (!email || !password) {
-      toast({
-        title: 'Please fill all fields',
-        description: 'Email and password are required',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (isSignUp && (!orgName || !city || !area)) {
-      toast({
-        title: 'Please fill all fields',
-        description: 'Organization name, city, and area are required',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (isSignUp && password.length < 6) {
-      toast({
-        title: 'Password too short',
-        description: 'Password must be at least 6 characters',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    const normalizedEmail = email.trim().toLowerCase();
     try {
       setLoading(true);
-
-      let result;
-      if (isSignUp) {
-        // Sign up new NGO
-        result = await signUpWithEmail(email, password);
-      } else {
-        // Sign in existing NGO
-        result = await signInWithEmail(email, password);
-      }
-
-      // Bootstrap NGO in backend with metadata
-      try {
-        // Always send metadata if available (for sign-up or if user needs to update profile)
-        const metadata = isSignUp ? {
-          organization_name: orgName,
-          city: city,
-          area: area,
-        } : undefined;
-        
-        await authApi.bootstrapNGO(metadata);
-      } catch (error: any) {
-        console.error('Bootstrap error:', error);
-        // Continue even if bootstrap fails (user might already exist)
-      }
-
+      await authApi.sendOtp(normalizedEmail);
+      setOtpSent(true);
       toast({
-        title: isSignUp ? 'Account created!' : 'Welcome back!',
-        description: `Signed in as ${email}`,
+        title: 'OTP Sent',
+        description: 'Please check your organization email for the 6-digit verification code.',
       });
-
-      navigate('/ngo-dashboard');
-    } catch (err: any) {
-      console.error('NGO auth failed:', err);
-      
-      let errorMessage = isSignUp ? 'Failed to create account' : 'Failed to sign in';
-      
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'No account found. Please sign up first.';
-        setIsSignUp(true);
-      } else if (err.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address';
-      } else if (err.code === 'auth/email-already-in-use') {
-        errorMessage = 'An account with this email already exists. Please sign in instead.';
-        setIsSignUp(false);
-      } else if (err.code === 'auth/weak-password') {
-        errorMessage = 'Password is too weak. Please use a stronger password.';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
+    } catch (error: any) {
       toast({
-        title: isSignUp ? 'Sign-up failed' : 'Sign-in failed',
-        description: errorMessage,
+        title: 'Error',
+        description: error.message || 'Failed to send OTP',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
+
+  const handleVerifyAndAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp) {
+      toast({ title: 'Error', description: 'Please enter the OTP', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let customToken;
+
+      const normalizedEmail = email.trim().toLowerCase();
+      if (isSignUp) {
+        if (!password || !orgName || !city || !area) {
+          toast({ title: 'Error', description: 'Please fill all fields', variant: 'destructive' });
+          return;
+        }
+
+        const result = (await authApi.registerWithOtp({
+          email: normalizedEmail,
+          otp,
+          password,
+          role: 'ngo',
+          metadata: { organization_name: orgName, city, area }
+        })) as any;
+        customToken = result.custom_token;
+      } else {
+        const result = (await authApi.loginWithOtp(normalizedEmail, otp)) as any;
+        customToken = result.custom_token;
+      }
+
+      if (customToken) {
+        const { signInWithCustomToken } = await import('@/lib/firebase');
+        await signInWithCustomToken(customToken);
+
+        toast({
+          title: isSignUp ? 'Account created!' : 'Welcome back!',
+          description: `Signed in as ${email}`,
+        });
+        navigate('/ngo-dashboard');
+      }
+    } catch (error: any) {
+      console.error('NGO auth error:', error);
+      toast({
+        title: 'Authentication Failed',
+        description: error.message || 'Verification failed. Please check your OTP.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -148,83 +127,129 @@ const NGOLogin = () => {
             </CardHeader>
 
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {isSignUp && (
+              <form onSubmit={otpSent ? handleVerifyAndAuth : handleSendOtp} className="space-y-4">
+                {!otpSent ? (
                   <>
                     <div>
-                      <label className="text-sm font-medium mb-1 block">Organization Name</label>
+                      <label className="text-sm font-medium mb-1 block">Organization Email</label>
                       <Input
-                        placeholder="e.g., Hope Foundation"
-                        value={orgName}
-                        onChange={(e) => setOrgName(e.target.value)}
+                        type="email"
+                        placeholder="e.g., contact@hopefoundation.org"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         disabled={loading}
                         required
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">City</label>
-                        <Input
-                          placeholder="e.g., Mumbai"
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          disabled={loading}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Area</label>
-                        <Input
-                          placeholder="e.g., Andheri West"
-                          value={area}
-                          onChange={(e) => setArea(e.target.value)}
-                          disabled={loading}
-                          required
-                        />
-                      </div>
+                    <Button
+                      type="submit"
+                      variant="success"
+                      className="w-full"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Sending OTP...
+                        </>
+                      ) : (
+                        'Send Verification OTP'
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="bg-success/5 p-3 rounded-lg border border-success/10">
+                      <p className="text-xs text-center text-muted-foreground">
+                        OTP sent to <span className="font-medium text-foreground">{email}</span>
+                        <button
+                          type="button"
+                          onClick={() => setOtpSent(false)}
+                          className="ml-2 text-primary hover:underline"
+                        >
+                          Change
+                        </button>
+                      </p>
                     </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Enter OTP</label>
+                      <Input
+                        placeholder="6-digit code"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        disabled={loading}
+                        required
+                        maxLength={6}
+                        className="text-center text-lg tracking-widest font-bold"
+                      />
+                    </div>
+
+                    {isSignUp && (
+                      <>
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Organization Name</label>
+                          <Input
+                            placeholder="e.g., Hope Foundation"
+                            value={orgName}
+                            onChange={(e) => setOrgName(e.target.value)}
+                            disabled={loading}
+                            required
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">City</label>
+                            <Input
+                              placeholder="e.g., Mumbai"
+                              value={city}
+                              onChange={(e) => setCity(e.target.value)}
+                              disabled={loading}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">Area</label>
+                            <Input
+                              placeholder="e.g., Andheri West"
+                              value={area}
+                              onChange={(e) => setArea(e.target.value)}
+                              disabled={loading}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Create Password</label>
+                          <Input
+                            type="password"
+                            placeholder="Min. 6 characters"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={loading}
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <Button
+                      type="submit"
+                      variant="success"
+                      className="w-full"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        isSignUp ? 'Verify & Create Account' : 'Verify & Login'
+                      )}
+                    </Button>
                   </>
                 )}
-
-                <div>
-                  {!isSignUp && <label className="text-sm font-medium mb-1 block">Email</label>}
-                  <Input
-                    type="email"
-                    placeholder="Organization email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                    required
-                  />
-                </div>
-
-                <div>
-                  {!isSignUp && <label className="text-sm font-medium mb-1 block">Password</label>}
-                  <Input
-                    type="password"
-                    placeholder={isSignUp ? "Create password (min. 6 characters)" : "Password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                    required
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  variant="success"
-                  className="w-full"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {isSignUp ? 'Creating account...' : 'Logging in...'}
-                    </>
-                  ) : (
-                    isSignUp ? 'Create Account' : 'Login to Dashboard'
-                  )}
-                </Button>
               </form>
 
               <div className="mt-4 text-center">

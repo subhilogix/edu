@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -5,8 +7,17 @@ import ActionCard from '@/components/shared/ActionCard';
 import { Search, Gift, FileText, BarChart3, Sparkles } from 'lucide-react';
 
 const StudentHome = () => {
-  const { user } = useAuth();
+  const { user, role, loading } = useAuth();
+  const navigate = useNavigate();
   const displayName = user?.displayName || 'Student';
+
+  useEffect(() => {
+    if (!loading && role === 'ngo') {
+      navigate('/ngo-dashboard');
+    }
+  }, [role, loading, navigate]);
+
+  if (loading) return null; // Or a loader
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

@@ -3,7 +3,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Award, BookOpen, Gift, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { User, Mail, Award, BookOpen, Gift, Clock, CheckCircle, XCircle, MapPin, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { impactApi, requestsApi } from '@/lib/api';
@@ -13,7 +13,7 @@ const StudentProfile = () => {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useUserProfile();
   const { toast } = useToast();
-  
+
   const [impact, setImpact] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,10 +92,20 @@ const StudentProfile = () => {
                   <User className="h-8 w-8 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xl font-display font-bold">{displayName}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{email}</span>
+                  <p className="text-xl font-display font-bold">{profile?.display_name || user?.displayName || 'Student'}</p>
+                  <div className="flex flex-col gap-1 mt-2">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">{email}</span>
+                    </div>
+                    {(profile?.area || profile?.city) && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {profile?.area}{profile?.city ? `, ${profile.city}` : ''}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

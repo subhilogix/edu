@@ -12,6 +12,7 @@ export interface Book {
   description?: string;
   image_urls: string[];
   donor_uid: string;
+  donor_name?: string;
   available: boolean;
   created_at?: string;
 }
@@ -20,7 +21,11 @@ export interface BookRequest {
   id: string;
   book_id: string;
   requester_uid: string;
+  requester_name?: string;
+  requester_location?: string;
   donor_uid: string;
+  donor_name?: string;
+  donor_location?: string;
   status: 'pending' | 'approved' | 'rejected' | 'completed';
   created_at?: string;
 }

@@ -9,6 +9,7 @@ import { ArrowLeft, MapPin, BookOpen, Shield, Loader2 } from 'lucide-react';
 import { booksApi } from '@/lib/api';
 import { Book } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const conditionVariant: Record<string, 'good' | 'usable' | 'damaged'> = {
   good: 'good',
@@ -25,6 +26,13 @@ const BookDetails = () => {
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { role, loading: authLoading } = useAuth(); // Get role from auth context
+
+  useEffect(() => {
+    if (!authLoading && role === 'ngo') {
+      navigate(`/ngo-books/${id}`);
+    }
+  }, [role, authLoading, navigate, id]);
 
   useEffect(() => {
     if (id) {
@@ -37,7 +45,7 @@ const BookDetails = () => {
     try {
       setLoading(true);
       const data = await booksApi.getById(id);
-      setBook(data);
+      setBook(data as Book);
     } catch (error: any) {
       console.error('Error loading book:', error);
       toast({
@@ -53,7 +61,7 @@ const BookDetails = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" />
+        <Header userType={role || 'student'} />
         <main className="flex-1 container py-8 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
@@ -65,7 +73,7 @@ const BookDetails = () => {
   if (!book) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" />
+        <Header userType={role || 'student'} />
         <main className="flex-1 container py-8 text-center">
           <h1 className="text-2xl font-display font-bold mb-4">Book not found</h1>
           <Link to="/search-books">
@@ -79,8 +87,8 @@ const BookDetails = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header userType="student" />
-      
+      <Header userType={role || 'student'} />
+
       <main className="flex-1 container py-8">
         <Link to="/search-books" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6">
           <ArrowLeft className="h-4 w-4" />
@@ -92,8 +100,8 @@ const BookDetails = () => {
           <div className="space-y-4">
             <Card variant="elevated" className="overflow-hidden">
               <div className="aspect-[4/5] bg-muted">
-                <img 
-                  src={book.image_urls?.[0] || '/placeholder.svg'} 
+                <img
+                  src={book.image_urls?.[0] || '/placeholder.svg'}
                   alt={book.title}
                   className="w-full h-full object-cover"
                   onError={(e) => {
@@ -105,8 +113,8 @@ const BookDetails = () => {
             {book.image_urls && book.image_urls.length > 1 && (
               <Card variant="outlined" className="overflow-hidden">
                 <div className="aspect-video bg-muted">
-                  <img 
-                    src={book.image_urls[1]} 
+                  <img
+                    src={book.image_urls[1]}
                     alt="Inside pages preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -145,18 +153,31 @@ const BookDetails = () => {
               </Card>
             )}
 
-            {(book.area || book.city) && (
+            {(book.area || book.city || book.donor_name) && (
               <Card variant="stat">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                      <MapPin className="h-5 w-5 text-success" />
+                <CardContent className="p-4 space-y-4">
+                  {(book.area || book.city) && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                        <MapPin className="h-5 w-5 text-success" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Location</p>
+                        <p className="font-medium">{book.area || ''}{book.city ? (book.area ? `, ${book.city}` : book.city) : ''}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Location</p>
-                      <p className="font-medium">{book.area || ''}{book.city ? (book.area ? `, ${book.city}` : book.city) : ''}</p>
+                  )}
+                  {book.donor_name && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Donor</p>
+                        <p className="font-medium">{book.donor_name}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -167,7 +188,7 @@ const BookDetails = () => {
               <div className="text-sm">
                 <p className="font-medium text-foreground">Safe Pickup Only</p>
                 <p className="text-muted-foreground">
-                  All pickups happen at verified locations like schools, libraries, or NGO centers. 
+                  All pickups happen at verified locations like schools, libraries, or NGO centers.
                   Your safety is our priority!
                 </p>
               </div>
@@ -175,8 +196,8 @@ const BookDetails = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-3">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="flex-1"
                 onClick={() => navigate(`/request-book/${book.id}`)}
               >

@@ -162,14 +162,15 @@ export const requestsApi = {
     return apiRequest(`/requests/${requestId}`);
   },
 
-  create: async (bookId: string, donorUid: string, pickupLocation: string, reason: string) => {
+  create: async (bookId: string, donorUid: string, pickupLocation: string, reason: string, quantity: number = 1) => {
     return apiRequest('/requests/', {
       method: 'POST',
       body: JSON.stringify({
         book_id: bookId,
         donor_uid: donorUid,
         pickup_location: pickupLocation,
-        reason: reason
+        reason: reason,
+        quantity: quantity
       }),
     });
   },
@@ -271,10 +272,13 @@ export const impactApi = {
 
 // Auth API
 export const authApi = {
-  bootstrap: async (role: string = 'student') => {
+  bootstrap: async (role: string = 'student', metadata?: { fullName?: string; city?: string; area?: string }) => {
     return apiRequest('/auth/bootstrap', {
       method: 'POST',
-      body: JSON.stringify({ role }),
+      body: JSON.stringify({
+        role,
+        ...(metadata && { metadata })
+      }),
     });
   },
 
@@ -290,6 +294,27 @@ export const authApi = {
 
   getCurrentUser: async () => {
     return apiRequest('/auth/me');
+  },
+
+  sendOtp: async (email: string) => {
+    return apiRequest('/auth/otp/send', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  registerWithOtp: async (data: { email: string; otp: string; password: string; role: string; metadata?: any }) => {
+    return apiRequest('/auth/otp/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  loginWithOtp: async (email: string, otp: string) => {
+    return apiRequest('/auth/otp/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    });
   },
 };
 

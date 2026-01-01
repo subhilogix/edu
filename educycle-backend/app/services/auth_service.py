@@ -2,11 +2,12 @@ from datetime import datetime
 from app.db.firestore import create_user_if_not_exists
 
 
-async def bootstrap_user(uid: str, email: str, role: str, extra: dict | None = None):
+async def bootstrap_user(uid: str, email: str, role: str, display_name: str | None = None, extra: dict | None = None):
     data = {
         "uid": uid,
         "email": email,
         "role": role,
+        "display_name": display_name,
         "created_at": datetime.utcnow(),
     }
 

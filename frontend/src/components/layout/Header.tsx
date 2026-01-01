@@ -10,20 +10,23 @@ interface HeaderProps {
   userName?: string; // NGO name will be passed here
 }
 
-const Header = ({ userType, userName }: HeaderProps) => {
+const Header = ({ userType: propUserType, userName: propUserName }: HeaderProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user: firebaseUser } = useAuth();
+  const { user: firebaseUser, role, organizationName } = useAuth();
+
+  const userType = propUserType || role;
+  const userName = propUserName || organizationName;
 
   const isLoginPage =
     location.pathname === '/' || location.pathname === '/ngo-login';
 
   // ✅ Name resolution logic (IMPORTANT)
   // Student → Google displayName from Firebase
-  // NGO → organization name from props (passed from pages)
+  // NGO → organization name from AuthContext or props
   // Fallback → "User"
-  const displayName = userType === 'student' 
+  const displayName = userType === 'student'
     ? (firebaseUser?.displayName || 'User')
     : (userName || 'User');
 
@@ -50,8 +53,8 @@ const Header = ({ userType, userName }: HeaderProps) => {
             userType === 'ngo'
               ? '/ngo-dashboard'
               : userType === 'student'
-              ? '/student-home'
-              : '/'
+                ? '/student-home'
+                : '/'
           }
           className="flex items-center gap-2 group"
         >
@@ -80,10 +83,11 @@ const Header = ({ userType, userName }: HeaderProps) => {
             {userType === 'ngo' && (
               <>
                 <Link to="/ngo-dashboard" className="nav-link">Dashboard</Link>
-                <Link to="/bulk-request" className="nav-link">Request Books</Link>
-                <Link to="/ngo-collection" className="nav-link">Collections</Link>
+                <Link to="/ngo-find-books" className="nav-link">Find Books</Link>
+                <Link to="/ngo-my-requests" className="nav-link">My Requests</Link>
                 <Link to="/ngo-distribution" className="nav-link">Distribution</Link>
                 <Link to="/ngo-impact" className="nav-link">Impact</Link>
+                <Link to="/ngo-profile" className="nav-link">Profile</Link>
               </>
             )}
           </nav>
@@ -139,10 +143,11 @@ const Header = ({ userType, userName }: HeaderProps) => {
             {userType === 'ngo' && (
               <>
                 <Link to="/ngo-dashboard" className="mobile-link">Dashboard</Link>
-                <Link to="/bulk-request" className="mobile-link">Request Books</Link>
-                <Link to="/ngo-collection" className="mobile-link">Collections</Link>
+                <Link to="/ngo-find-books" className="mobile-link">Find Books</Link>
+                <Link to="/ngo-my-requests" className="mobile-link">My Requests</Link>
                 <Link to="/ngo-distribution" className="mobile-link">Distribution</Link>
                 <Link to="/ngo-impact" className="mobile-link">Impact</Link>
+                <Link to="/ngo-profile" className="mobile-link">Profile</Link>
               </>
             )}
 

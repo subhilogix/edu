@@ -6,6 +6,7 @@ interface UserProfile {
   uid: string;
   email: string;
   role: 'student' | 'ngo';
+  display_name?: string;
   organization_name?: string;
   city?: string;
   area?: string;

@@ -21,12 +21,12 @@ try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     googleProvider = new GoogleAuthProvider();
-    
+
     // Set custom parameters for Google sign-in
     googleProvider.setCustomParameters({
       prompt: 'select_account', // Always show account picker
     });
-    
+
     // Add scopes
     googleProvider.addScope('profile');
     googleProvider.addScope('email');
@@ -81,6 +81,15 @@ export const signUpWithEmail = async (email: string, password: string) => {
   return createUserWithEmailAndPassword(auth, email, password);
 };
 
+export const signInWithCustomToken = async (token: string) => {
+  const initError = getFirebaseInitError();
+  if (initError || !auth) {
+    throw new Error(initError || 'Firebase not initialized.');
+  }
+  const { signInWithCustomToken: firebaseSignIn } = await import('firebase/auth');
+  return firebaseSignIn(auth, token);
+};
+
 export const signOut = async () => {
   const initError = getFirebaseInitError();
   if (initError || !auth) {
@@ -93,7 +102,7 @@ export const onAuthChange = (callback: (user: User | null) => void) => {
   if (!auth) {
     // If Firebase is not initialized, immediately call callback with null
     callback(null);
-    return () => {}; // Return no-op unsubscribe function
+    return () => { }; // Return no-op unsubscribe function
   }
   return onAuthStateChanged(auth, callback);
 };

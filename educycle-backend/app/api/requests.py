@@ -36,6 +36,7 @@ async def request_book(payload: dict, user=Depends(get_current_user)):
         payload["donor_uid"],
         payload.get("pickup_location", ""),
         payload.get("reason", ""),
+        payload.get("quantity", 1),
     )
     return {"request_id": req_id}
 

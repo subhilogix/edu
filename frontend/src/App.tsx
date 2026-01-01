@@ -19,12 +19,16 @@ import Feedback from "./pages/Feedback";
 import Notes from "./pages/Notes";
 import StudentImpact from "./pages/StudentImpact";
 import DonateBook from "./pages/DonateBook";
+// NGO Pages
 import NGODashboard from "./pages/NGODashboard";
-import BulkRequest from "./pages/BulkRequest";
+import NGOProfile from "./pages/NGOProfile";
 import NGOApprovalStatus from "./pages/NGOApprovalStatus";
-import NGOCollection from "./pages/NGOCollection";
 import NGODistribution from "./pages/NGODistribution";
 import NGOImpact from "./pages/NGOImpact";
+import NGOSearchBooks from "./pages/NGOSearchBooks";
+import NGOBookDetails from "./pages/NGOBookDetails";
+import NGORequestBook from "./pages/NGORequestBook";
+import NGORequestStatus from "./pages/NGORequestStatus";
 
 const queryClient = new QueryClient();
 
@@ -38,7 +42,7 @@ const App = () => (
           {/* Auth */}
           <Route path="/" element={<Index />} />
           <Route path="/ngo-login" element={<NGOLogin />} />
-          
+
           {/* Student Routes */}
           <Route path="/student-home" element={<StudentHome />} />
           <Route path="/search-books" element={<SearchBooks />} />
@@ -52,16 +56,21 @@ const App = () => (
           <Route path="/student-impact" element={<StudentImpact />} />
           {/* <Route path="/student-profile" element={<StudentProfile />} /> */}
           <Route path="/donate-book" element={<DonateBook />} />
-          
+
           {/* NGO Routes */}
           <Route path="/ngo-dashboard" element={<NGODashboard />} />
-          {/* <Route path="/ngo-profile" element={<NGOProfile />} /> */}
-          <Route path="/bulk-request" element={<BulkRequest />} />
+          <Route path="/ngo-profile" element={<NGOProfile />} />
+
           <Route path="/ngo-approval-status" element={<NGOApprovalStatus />} />
-          <Route path="/ngo-collection" element={<NGOCollection />} />
           <Route path="/ngo-distribution" element={<NGODistribution />} />
           <Route path="/ngo-impact" element={<NGOImpact />} />
-          
+
+          {/* NGO Individual Book Request Flow */}
+          <Route path="/ngo-find-books" element={<NGOSearchBooks />} />
+          <Route path="/ngo-books/:id" element={<NGOBookDetails />} />
+          <Route path="/ngo-request-book/:id" element={<NGORequestBook />} />
+          <Route path="/ngo-my-requests" element={<NGORequestStatus />} />
+
           {/* Catch-all */}
           <Route path="*" element={<NotFound />} />
         </Routes>

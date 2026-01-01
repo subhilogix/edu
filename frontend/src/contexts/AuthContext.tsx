@@ -6,8 +6,8 @@ import {
   ReactNode,
 } from 'react';
 import { User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { onAuthChange } from '@/lib/firebase';
+import { auth, onAuthChange } from '@/lib/firebase';
+import { authApi } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -31,14 +31,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [organizationName, setOrganizationName] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange((firebaseUser) => {
+    const unsubscribe = onAuthChange(async (firebaseUser) => {
       setUser(firebaseUser);
-      setLoading(false);
 
       if (!firebaseUser) {
-        // Reset when logged out
         setRole(null);
         setOrganizationName(null);
+        setLoading(false);
+      } else {
+        try {
+          // Fetch additional user data (role, etc.) from backend
+          const profile = await authApi.getCurrentUser() as any;
+          if (profile) {
+            setRole(profile.role);
+            setOrganizationName(profile.organization_name || null);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile in AuthContext:', error);
+        } finally {
+          setLoading(false);
+        }
       }
     });
 

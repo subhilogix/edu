@@ -22,12 +22,19 @@ const RequestBook = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && role === 'ngo') {
+      navigate(`/ngo-request-book/${id}`);
+    }
+  }, [role, authLoading, navigate, id]);
 
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [reason, setReason] = useState('');
   const [pickupPreference, setPickupPreference] = useState('');
+  const [quantity, setQuantity] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,7 +85,7 @@ const RequestBook = () => {
 
     try {
       setSubmitting(true);
-      await requestsApi.create(book.id, book.donor_uid, pickupPreference, reason);
+      await requestsApi.create(book.id, book.donor_uid, pickupPreference, reason, quantity);
       setSubmitted(true);
       toast({
         title: "Request submitted!",
@@ -99,7 +106,7 @@ const RequestBook = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" />
+        <Header userType={role || 'student'} />
         <main className="flex-1 container py-8 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
@@ -111,7 +118,7 @@ const RequestBook = () => {
   if (!book) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" />
+        <Header userType={role || 'student'} />
         <main className="flex-1 container py-8 text-center">
           <h1 className="text-2xl font-display font-bold mb-4">Book not found</h1>
           <Link to="/search-books">
@@ -126,7 +133,7 @@ const RequestBook = () => {
   if (submitted) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header userType="student" userName={user?.displayName || undefined} />
+        <Header userType={role || 'student'} userName={user?.displayName || undefined} />
         <main className="flex-1 container py-8">
           <div className="max-w-lg mx-auto text-center">
             <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-6 animate-bounce-soft">
@@ -165,7 +172,7 @@ const RequestBook = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header userType="student" />
+      <Header userType={role || 'student'} />
 
       <main className="flex-1 container py-8">
         <Link to={`/book/${id}`} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6">
@@ -208,6 +215,29 @@ const RequestBook = () => {
           </Card>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+
+            {/* NGO Quantity Input */}
+            {role === 'ngo' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Quantity Required</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                    className="max-w-[200px]"
+                    placeholder="Number of copies"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Specify the number of copies you need for your students.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Reason */}
             <Card>
               <CardHeader>

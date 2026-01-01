@@ -11,7 +11,11 @@ import { booksApi } from '@/lib/api';
 import { Book } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
 
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+
 const SearchBooks = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedBoard, setSelectedBoard] = useState('');
@@ -20,6 +24,13 @@ const SearchBooks = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { role, loading: authLoading } = useAuth(); // Get role from auth context
+
+  useEffect(() => {
+    if (!authLoading && role === 'ngo') {
+      navigate('/ngo-find-books');
+    }
+  }, [role, authLoading, navigate]);
 
   useEffect(() => {
     loadBooks();
@@ -32,7 +43,7 @@ const SearchBooks = () => {
       if (selectedClass) filters.class_level = selectedClass;
       if (selectedBoard) filters.board = selectedBoard;
       if (selectedSubject) filters.subject = selectedSubject;
-      
+
       const data = await booksApi.search(filters);
       setBooks(Array.isArray(data) ? data : []);
     } catch (error: any) {
@@ -51,7 +62,7 @@ const SearchBooks = () => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return book.title.toLowerCase().includes(query) ||
-           book.subject.toLowerCase().includes(query);
+      book.subject.toLowerCase().includes(query);
   });
 
   const clearFilters = () => {
@@ -64,7 +75,7 @@ const SearchBooks = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header userType="student" />
+      <Header userType={role || 'student'} />
 
       <main className="flex-1 container py-8">
         {/* Page Header */}
@@ -113,7 +124,7 @@ const SearchBooks = () => {
                 </Button>
               )}
             </div>
-            
+
             <div className="grid sm:grid-cols-3 gap-4">
               {/* Class Filter */}
               <div>

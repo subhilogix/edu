@@ -42,6 +42,7 @@ const statusConfig = {
   },
 };
 
+
 const RequestStatus = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<BookRequest[]>([]);
@@ -49,7 +50,13 @@ const RequestStatus = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [bookTitles, setBookTitles] = useState<Record<string, string>>({});
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && role === 'ngo') {
+      navigate('/ngo-my-requests');
+    }
+  }, [role, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -125,7 +132,7 @@ const RequestStatus = () => {
       await requestsApi.complete(requestId);
       toast({
         title: "Success!",
-        description: "Book receipt confirmed. Please share your feedback!",
+        description: "Book marked as collected. Thank you for using EduCycle!",
       });
       navigate(`/feedback/${requestId}`);
     } catch (error: any) {
@@ -142,7 +149,7 @@ const RequestStatus = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header userType="student" />
+      <Header userType={role || 'student'} />
       <main className="flex-1 container py-8">
         <h1 className="text-3xl font-display font-bold mb-2">My Requests</h1>
         <p className="text-muted-foreground mb-8">
@@ -195,6 +202,21 @@ const RequestStatus = () => {
                           <p className="text-sm text-muted-foreground mb-2">
                             Requested on {request.created_at ? new Date(request.created_at).toLocaleDateString() : 'N/A'}
                           </p>
+                          {request.donor_name && (
+                            <p className="text-sm font-medium flex items-center gap-1 mb-1">
+                              Donor: <span className="text-foreground">{request.donor_name}</span>
+                            </p>
+                          )}
+                          {request.donor_location && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                              <MapPin className="h-3 w-3" /> {request.donor_location}
+                            </p>
+                          )}
+                          {(request.quantity > 1 || role === 'ngo') && (
+                            <p className="text-sm font-medium mb-1">
+                              Quantity: {request.quantity || 1}
+                            </p>
+                          )}
                         </div>
                         <div className="flex gap-2 shrink-0">
                           {request.status === 'approved' && (
@@ -212,7 +234,7 @@ const RequestStatus = () => {
                                 onClick={() => handleComplete(request.id)}
                               >
                                 <CheckCircle className="h-4 w-4" />
-                                Confirm Receipt
+                                Mark as Collected
                               </Button>
                             </>
                           )}
@@ -257,12 +279,24 @@ const RequestStatus = () => {
                             </h3>
                             <Badge variant={status.variant}>{status.label}</Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-1">
-                            Requested by Student ID: {request.requester_uid.slice(0, 8)}...
-                          </p>
+                          <div className="flex flex-col gap-1 mb-2">
+                            <p className="text-sm font-medium text-foreground">
+                              Requested by: {request.requester_name || 'Anonymous'}
+                            </p>
+                            {request.requester_location && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <MapPin className="h-3 w-3" /> {request.requester_location}
+                              </p>
+                            )}
+                          </div>
                           {request.reason && (
                             <p className="text-sm italic text-muted-foreground mb-2">
                               "{request.reason}"
+                            </p>
+                          )}
+                          {(request.quantity > 1) && (
+                            <p className="text-sm font-medium mb-1">
+                              Quantity: {request.quantity}
                             </p>
                           )}
                           <p className="text-xs text-muted-foreground">

@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 
 interface BookCardProps {
   book: Book;
+  linkPrefix?: string;
 }
 
 const conditionVariant: Record<string, 'good' | 'usable' | 'damaged'> = {
@@ -18,7 +19,7 @@ const conditionVariant: Record<string, 'good' | 'usable' | 'damaged'> = {
   Damaged: 'damaged',
 };
 
-const BookCard = ({ book }: BookCardProps) => {
+const BookCard = ({ book, linkPrefix = '/book' }: BookCardProps) => {
   const coverImage = book.image_urls?.[0] || '/placeholder.svg';
   const condition = book.condition || 'usable';
   const conditionKey = conditionVariant[condition] || 'usable';
@@ -26,15 +27,15 @@ const BookCard = ({ book }: BookCardProps) => {
   return (
     <Card variant="elevated" className="overflow-hidden group">
       <div className="aspect-[3/4] bg-muted relative overflow-hidden">
-        <img 
-          src={coverImage} 
+        <img
+          src={coverImage}
           alt={book.title}
           className="w-full h-full object-cover transition-transform group-hover:scale-105"
           onError={(e) => {
             (e.target as HTMLImageElement).src = '/placeholder.svg';
           }}
         />
-        <Badge 
+        <Badge
           variant={conditionKey}
           className="absolute top-3 right-3"
         >
@@ -56,8 +57,14 @@ const BookCard = ({ book }: BookCardProps) => {
               <span>{book.area}{book.city ? `, ${book.city}` : ''}</span>
             </div>
           )}
+          {book.donor_name && (
+            <div className="flex items-center gap-1 font-medium text-foreground/80">
+              <span className="text-[10px] uppercase text-muted-foreground mr-1">Donor:</span>
+              <span className="truncate">{book.donor_name}</span>
+            </div>
+          )}
         </div>
-        <Link to={`/book/${book.id}`}>
+        <Link to={`${linkPrefix}/${book.id}`}>
           <Button variant="outline" size="sm" className="w-full mt-4">
             <Eye className="h-4 w-4 mr-1" />
             View Details

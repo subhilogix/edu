@@ -21,8 +21,8 @@ async def create_user_if_not_exists(uid: str, data: dict):
         update_data = {}
         for k, v in data.items():
             if v is not None:
-                # Always update organization fields for NGOs even if they exist
-                if k in ["organization_name", "city", "area"]:
+                # Always update organization fields and display name if provided (to fix missing data)
+                if k in ["organization_name", "city", "area", "display_name"]:
                     update_data[k] = v
                 else:
                     # Only update other fields if they don't exist or are None
@@ -32,3 +32,15 @@ async def create_user_if_not_exists(uid: str, data: dict):
         
         if update_data:
             ref.update(update_data)
+
+
+async def get_user_display_info(uid: str):
+    user = await get_user_by_uid(uid)
+    if not user:
+        return {"name": "Unknown User", "location": "Unknown Location"}
+    
+    name = user.get("organization_name") or user.get("display_name") or user.get("email", "Anonymous")
+    location = f"{user.get('area', '')}, {user.get('city', '')}".strip(", ") or "Location not specified"
+    
+    return {"name": name, "location": location}
+

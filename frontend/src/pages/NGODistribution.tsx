@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,13 +12,23 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 const NGODistribution = () => {
+  const navigate = useNavigate();
+  const { role, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { profile, loading } = useUserProfile();
+  const { profile, loading: profileLoading } = useUserProfile();
+
+  useEffect(() => {
+    if (!authLoading && role === 'student') {
+      navigate('/student-home');
+    }
+  }, [role, authLoading, navigate]);
+
   const orgName = profile?.organization_name || 'Organization';
+  const loading = authLoading || profileLoading;
   const [distributions, setDistributions] = useState(mockDistributions);
 
   const handleVerify = (id: string) => {
-    setDistributions(distributions.map(d => 
+    setDistributions(distributions.map(d =>
       d.id === id ? { ...d, verified: true, booksDistributed: 50 } : d
     ));
     toast({
@@ -40,7 +52,7 @@ const NGODistribution = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header userType="ngo" userName={orgName} />
-      
+
       <main className="flex-1 container py-8">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
@@ -89,9 +101,8 @@ const NGODistribution = () => {
               <CardContent className="p-5">
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
                   {/* Status Icon */}
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                    distribution.verified ? 'bg-success/10' : 'bg-warning/10'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${distribution.verified ? 'bg-success/10' : 'bg-warning/10'
+                    }`}>
                     {distribution.verified ? (
                       <CheckCircle className="h-6 w-6 text-success" />
                     ) : (
@@ -107,7 +118,7 @@ const NGODistribution = () => {
                         {distribution.verified ? 'Verified' : 'Pending'}
                       </Badge>
                     </div>
-                    
+
                     <div className="grid sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
@@ -132,8 +143,8 @@ const NGODistribution = () => {
                           <Upload className="h-4 w-4" />
                           Upload Proof
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           onClick={() => handleVerify(distribution.id)}
                           className="gap-1"
                         >

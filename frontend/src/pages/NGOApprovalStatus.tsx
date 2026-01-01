@@ -92,7 +92,7 @@ const NGOApprovalStatus = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header userType="ngo" userName={orgName} />
-      
+
       <main className="flex-1 container py-8">
         <h1 className="text-3xl font-display font-bold mb-2">Request Status</h1>
         <p className="text-muted-foreground mb-8">
@@ -126,7 +126,7 @@ const NGOApprovalStatus = () => {
                         </h3>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </div>
-                      
+
                       <p className="text-sm text-muted-foreground mb-3">
                         Requested: {quantity} books
                         {request.city && request.area && ` • ${request.city}, ${request.area}`}
@@ -184,9 +184,7 @@ const NGOApprovalStatus = () => {
             <p className="text-muted-foreground mb-4">
               Create a bulk request to get books for your students
             </p>
-            <Link to="/bulk-request">
-              <Button>Create Request</Button>
-            </Link>
+
           </div>
         )}
       </main>
