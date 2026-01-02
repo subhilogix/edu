@@ -5,3 +5,4 @@
 # Firebase / Google secrets
 serviceAccountKey.json
 educycle-backend/serviceAccountKey.json
+educycle-backend/app/static/uploads/
