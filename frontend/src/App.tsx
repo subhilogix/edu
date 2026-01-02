@@ -30,6 +30,9 @@ import NGOBookDetails from "./pages/NGOBookDetails";
 import NGORequestBook from "./pages/NGORequestBook";
 import NGORequestStatus from "./pages/NGORequestStatus";
 
+import Distribution from "./pages/Distribution";
+import CreateDistribution from "./pages/CreateDistribution";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -42,6 +45,9 @@ const App = () => (
           {/* Auth */}
           <Route path="/" element={<Index />} />
           <Route path="/ngo-login" element={<NGOLogin />} />
+
+          {/* Public / Shared */}
+          <Route path="/distribution" element={<Distribution />} />
 
           {/* Student Routes */}
           <Route path="/student-home" element={<StudentHome />} />
@@ -62,7 +68,7 @@ const App = () => (
           <Route path="/ngo-profile" element={<NGOProfile />} />
 
           <Route path="/ngo-approval-status" element={<NGOApprovalStatus />} />
-          <Route path="/ngo-distribution" element={<NGODistribution />} />
+          <Route path="/create-distribution" element={<CreateDistribution />} />
           <Route path="/ngo-impact" element={<NGOImpact />} />
 
           {/* NGO Individual Book Request Flow */}

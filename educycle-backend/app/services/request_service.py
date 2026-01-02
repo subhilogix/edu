@@ -27,15 +27,47 @@ async def create_request(book_id: str, requester_uid: str, donor_uid: str, picku
 
 
 async def update_request_status(request_id: str, status: str):
-    db.collection("requests").document(request_id).update({
+    doc_ref = db.collection("requests").document(request_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        return
+        
+    data = doc.to_dict()
+    doc_ref.update({
         "status": status
     })
+    
+    # Notify requester if accepted
+    if status == "accepted":
+        notification_data = {
+            "user_uid": data["requester_uid"],
+            "type": "request_accepted",
+            "title": "Book Request Accepted!",
+            "body": f"Your request for a book has been accepted by {data.get('donor_name', 'the donor')}.",
+            "related_id": request_id,
+            "read": False,
+            "timestamp": datetime.utcnow()
+        }
+        db.collection("notifications").add(notification_data)
+    elif status == "rejected":
+         notification_data = {
+            "user_uid": data["requester_uid"],
+            "type": "request_rejected",
+            "title": "Book Request Update",
+            "body": f"Your request for a book was not accepted this time.",
+            "related_id": request_id,
+            "read": False,
+            "timestamp": datetime.utcnow()
+        }
+         db.collection("notifications").add(notification_data)
 
 
 async def get_request(request_id: str):
     doc = db.collection("requests").document(request_id).get()
     if doc.exists:
         item = {**doc.to_dict(), "id": doc.id}
+        
+        # Fetch User Info
         if "requester_name" not in item:
             requester_info = await get_user_display_info(item["requester_uid"])
             item["requester_name"] = requester_info["name"]
@@ -44,6 +76,18 @@ async def get_request(request_id: str):
             donor_info = await get_user_display_info(item["donor_uid"])
             item["donor_name"] = donor_info["name"]
             item["donor_location"] = donor_info["location"]
+            
+        # Fetch Book Info
+        try:
+            book_doc = db.collection("books").document(item["book_id"]).get()
+            if book_doc.exists:
+                book_data = book_doc.to_dict()
+                item["book_title"] = book_data.get("title", "Unknown Book")
+                images = book_data.get("image_urls", [])
+                item["book_image"] = images[0] if images else None
+        except Exception:
+            item["book_title"] = "Unknown Book"
+            
         return item
     return None
 

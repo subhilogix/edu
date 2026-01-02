@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Gift, Upload, CheckCircle, Camera, Loader2 } from 'lucide-react';
+import { Gift, Upload, CheckCircle, Camera, Loader2, Shield, Search, MapPin } from 'lucide-react';
 import { boardOptions, subjectOptions, classOptions } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
-import { booksApi } from '@/lib/api';
+import { booksApi, locationApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 const conditionOptions = [
@@ -36,11 +36,57 @@ const DonateBook = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Safe Location Search State
+  const [searchingLocations, setSearchingLocations] = useState(false);
+  const [pickupPoints, setPickupPoints] = useState<any[]>([]);
+  const [selectedPickupPoint, setSelectedPickupPoint] = useState<any>(null);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       setImages(files);
     }
+  };
+
+  const handleSearchLocations = async () => {
+    if (!city || !area) {
+      toast({
+        title: "Location required",
+        description: "Please enter your city and area to find nearby safe pickup points",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSearchingLocations(true);
+      const result = await locationApi.searchPickupPoints(city, area);
+      setPickupPoints(result.pickup_points);
+      if (result.pickup_points.length === 0) {
+        toast({
+          title: "No nearby points found",
+          description: "Try increasing the search radius or double check your area name.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Search failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setSearchingLocations(false);
+    }
+  };
+
+  const handleSelectPickup = (point: any) => {
+    setSelectedPickupPoint(point);
+    setCity(point.city);
+    setArea(point.area);
+    toast({
+      title: "Safe Location Selected",
+      description: `You can drop off the book at ${point.name}`,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,6 +121,15 @@ const DonateBook = () => {
 
     try {
       setSubmitting(true);
+
+      let finalDescription = description;
+      let pickupInfo = undefined;
+
+      if (selectedPickupPoint) {
+        pickupInfo = `Verified Drop-off Point: ${selectedPickupPoint.name}`;
+        finalDescription = description ? `${description}\n\n${pickupInfo}` : pickupInfo;
+      }
+
       const bookData = {
         title: donationType === 'set' ? `Complete Class ${bookClass} Book Set` : bookName,
         subject: donationType === 'set' ? 'Full Set' : subject,
@@ -83,7 +138,8 @@ const DonateBook = () => {
         condition: condition.toLowerCase(),
         city: city || undefined,
         area: area || undefined,
-        description: description || undefined,
+        description: finalDescription,
+        pickup_location: selectedPickupPoint ? selectedPickupPoint.name : undefined,
         is_set: donationType === 'set',
       };
 
@@ -366,29 +422,126 @@ const DonateBook = () => {
               </CardContent>
             </Card>
 
-            {/* Location (Optional) */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Location (Optional)</CardTitle>
+            {/* Safe Drop-off Location */}
+            <Card className="overflow-hidden border-2 border-primary/20">
+              <CardHeader className="bg-primary/5 pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  Find Safe Drop-off Location (Optional)
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">City</label>
-                  <Input
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="E.g., Mumbai"
-                  />
+              <CardContent className="pt-6 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Select a nearby verified NGO to drop off your book safely.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mb-2"
+                      onClick={() => {
+                        if (navigator.geolocation) {
+                          setSearchingLocations(true);
+                          navigator.geolocation.getCurrentPosition(async (position) => {
+                            try {
+                              const { latitude, longitude } = position.coords;
+                              const result = await locationApi.searchPickupPoints(undefined, undefined, latitude, longitude);
+                              setPickupPoints(result.pickup_points);
+
+                              // Auto-fill address if detected
+                              if (result.user_location && (result.user_location as any).detected_address) {
+                                const addr = (result.user_location as any).detected_address;
+                                if (addr.city) setCity(addr.city);
+                                if (addr.area) setArea(addr.area);
+                                toast({ title: "Location Detected", description: `Searching near ${addr.area}, ${addr.city}` });
+                              } else {
+                                toast({ title: "Location Detected", description: "Found nearby pickup points." });
+                              }
+
+                              if (result.pickup_points.length === 0) {
+                                toast({ title: "No NGOs found nearby", description: "Try increasing search radius" });
+                              }
+                            } catch (e: any) {
+                              toast({ title: "Location Error", description: e.message, variant: "destructive" });
+                            } finally {
+                              setSearchingLocations(false);
+                            }
+                          }, (e) => {
+                            setSearchingLocations(false);
+                            toast({ title: "Permission denied", description: "Please enter city/area manually or allow location access.", variant: "destructive" });
+                          });
+                        } else {
+                          toast({ title: "Geolocation not supported", description: "Please enter location manually", variant: "destructive" });
+                        }
+                      }}
+                    >
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Use My Current Location
+                    </Button>
+                    <div className="relative flex items-center py-2">
+                      <div className="flex-grow border-t border-muted"></div>
+                      <span className="flex-shrink-0 mx-4 text-xs text-muted-foreground uppercase">Or search manually</span>
+                      <div className="flex-grow border-t border-muted"></div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">City</label>
+                    <Input
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g. Mumbai"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Area</label>
+                    <Input
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                      placeholder="e.g. Bandra"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Area</label>
-                  <Input
-                    value={area}
-                    onChange={(e) => setArea(e.target.value)}
-                    placeholder="E.g., Andheri West"
-                  />
-                </div>
-                <div>
+
+                <Button
+                  type="button"
+                  onClick={handleSearchLocations}
+                  disabled={searchingLocations}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  {searchingLocations ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                  Find Verified NGOs Nearby
+                </Button>
+
+                {pickupPoints.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm text-muted-foreground font-medium">Select a drop-off point:</p>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {pickupPoints.map((point) => (
+                        <div
+                          key={point.uid}
+                          onClick={() => handleSelectPickup(point)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-colors flex items-center justify-between ${selectedPickupPoint?.uid === point.uid
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                            }`}
+                        >
+                          <div>
+                            <p className="font-semibold">{point.name}</p>
+                            <p className="text-xs text-muted-foreground">{point.area}, {point.city}</p>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="outline" className="text-xs">{point.distance_km} km</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4">
                   <label className="text-sm font-medium mb-2 block">Description (Optional)</label>
                   <textarea
                     value={description}

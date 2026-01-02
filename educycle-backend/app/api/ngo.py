@@ -1,8 +1,15 @@
 from fastapi import APIRouter, Depends
 from app.api.deps import ngo_only
-from app.services.ngo_service import create_bulk_request, list_ngo_requests
+from app.services.ngo_service import create_bulk_request, list_ngo_requests, block_donor
 
 router = APIRouter()
+
+
+@router.post("/block-user")
+async def block_user(payload: dict, ngo=Depends(ngo_only)):
+    """Block a user from future interactions"""
+    await block_donor(ngo["uid"], payload["uid"])
+    return {"status": "blocked"}
 
 
 @router.get("/bulk-request")

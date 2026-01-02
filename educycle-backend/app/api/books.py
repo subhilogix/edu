@@ -3,6 +3,7 @@ import json
 from app.api.deps import student_only, get_current_user
 from app.services.book_service import donate_book, search_books, get_book
 from app.db.storage import upload_file
+from app.db.firestore import get_blocked_uids
 
 router = APIRouter()
 
@@ -10,7 +11,15 @@ router = APIRouter()
 @router.get("/search")
 async def search(request: Request, user=Depends(get_current_user)):
     filters = dict(request.query_params)
-    return await search_books(filters, exclude_uid=user["uid"] if user else None)
+    blocked_uids = []
+    if user:
+        blocked_uids = await get_blocked_uids(user["uid"])
+        
+    return await search_books(
+        filters, 
+        exclude_uid=user["uid"] if user else None,
+        blocked_uids=blocked_uids
+    )
 
 
 @router.get("/{book_id}")

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -6,17 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, CheckCircle, Loader2 } from 'lucide-react';
-import { booksApi, requestsApi } from '@/lib/api';
+import { ArrowLeft, MapPin, CheckCircle, Loader2, Search, Shield } from 'lucide-react';
+import { booksApi, requestsApi, locationApi } from '@/lib/api';
 import { Book } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-
-const pickupOptions = [
-  { id: 'school', label: 'School Library', description: 'Meet at your school library' },
-  { id: 'library', label: 'Public Library', description: 'Meet at a public library near you' },
-  { id: 'ngo', label: 'NGO Center', description: 'Meet at a verified NGO center' },
-];
 
 const RequestBook = () => {
   const { id } = useParams();
@@ -33,16 +27,30 @@ const RequestBook = () => {
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [reason, setReason] = useState('');
-  const [pickupPreference, setPickupPreference] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Pickup Location search state
+  const [city, setCity] = useState('');
+  const [area, setArea] = useState('');
+  const [searchingLocations, setSearchingLocations] = useState(false);
+  const [pickupPoints, setPickupPoints] = useState<any[]>([]);
+  const [selectedPickupPoint, setSelectedPickupPoint] = useState<any>(null);
 
   useEffect(() => {
     if (id) {
       loadBook();
     }
   }, [id]);
+
+  useEffect(() => {
+    // Pre-fill user location if available
+    if (user) {
+      if ((user as any).city) setCity((user as any).city); // Access check needed if type definition is strict
+      // We might need to fetch profile explicitly if user object in context lacks these details
+    }
+  }, [user]);
 
   const loadBook = async () => {
     if (!id) return;
@@ -62,13 +70,54 @@ const RequestBook = () => {
     }
   };
 
+  const handleSearchLocations = async () => {
+    if (!city || !area) {
+      toast({
+        title: "Location required",
+        description: "Please enter your city and area to find nearby safe pickup points",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSearchingLocations(true);
+      const result = await locationApi.searchPickupPoints(city, area);
+      setPickupPoints(result.pickup_points);
+      if (result.pickup_points.length === 0) {
+        toast({
+          title: "No nearby points found",
+          description: "Try increasing the search radius or double check your area name.",
+          variant: 'destructive' // Or warning
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Search failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setSearchingLocations(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!reason.trim() || !pickupPreference) {
+    if (!reason.trim()) {
       toast({
-        title: "Please fill all fields",
-        description: "Tell us why you need this book and select a pickup location",
+        title: "Reason required",
+        description: "Please tell us why you need this book",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedPickupPoint) {
+      toast({
+        title: "Pickup location required",
+        description: "Please search for and select a safe pickup location",
         variant: "destructive",
       });
       return;
@@ -85,7 +134,10 @@ const RequestBook = () => {
 
     try {
       setSubmitting(true);
-      await requestsApi.create(book.id, book.donor_uid, pickupPreference, reason, quantity);
+      // Construct a meaningful location string
+      const locationStr = `NGO: ${selectedPickupPoint.name}, ${selectedPickupPoint.area}`;
+
+      await requestsApi.create(book.id, book.donor_uid, locationStr, reason, quantity);
       setSubmitted(true);
       toast({
         title: "Request submitted!",
@@ -183,7 +235,7 @@ const RequestBook = () => {
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-display font-bold mb-2">Request Book</h1>
           <p className="text-muted-foreground mb-8">
-            Tell us why you need this book and where you'd like to pick it up
+            Tell us why you need this book and search for a safe pickup location.
           </p>
 
           {/* Book Summary */}
@@ -204,19 +256,13 @@ const RequestBook = () => {
                 <p className="text-sm text-muted-foreground">
                   {book.subject} • Class {book.class_level} • {book.board}
                 </p>
-                {(book.area || book.city) && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>{book.area || ''}{book.city ? (book.area ? `, ${book.city}` : book.city) : ''}</span>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
 
           <form onSubmit={handleSubmit} className="space-y-6">
 
-            {/* NGO Quantity Input */}
+            {/* Quantity Input */}
             {role === 'ngo' && (
               <Card>
                 <CardHeader>
@@ -231,9 +277,6 @@ const RequestBook = () => {
                     className="max-w-[200px]"
                     placeholder="Number of copies"
                   />
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Specify the number of copies you need for your students.
-                  </p>
                 </CardContent>
               </Card>
             )}
@@ -253,48 +296,150 @@ const RequestBook = () => {
               </CardContent>
             </Card>
 
-            {/* Pickup Preference */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Where would you like to pick up?</CardTitle>
+            {/* Safe Pickup Location Finder */}
+            <Card className="overflow-hidden border-2 border-primary/20">
+              <CardHeader className="bg-primary/5 pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  Find Safe Pickup Location (NGOs)
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {pickupOptions.map(option => (
-                  <label
-                    key={option.id}
-                    className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${pickupPreference === option.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/30'
-                      }`}
-                  >
-                    <input
-                      type="radio"
-                      name="pickup"
-                      value={option.id}
-                      checked={pickupPreference === option.id}
-                      onChange={(e) => setPickupPreference(e.target.value)}
-                      className="sr-only"
+              <CardContent className="pt-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mb-2"
+                      onClick={() => {
+                        if (navigator.geolocation) {
+                          setSearchingLocations(true);
+                          navigator.geolocation.getCurrentPosition(async (position) => {
+                            try {
+                              const { latitude, longitude } = position.coords;
+                              const result = await locationApi.searchPickupPoints(undefined, undefined, latitude, longitude);
+                              const castedResult = result as any; // Allow accessing search_expanded
+
+                              setPickupPoints(result.pickup_points);
+
+                              // Auto-fill address if detected
+                              if (result.user_location && (result.user_location as any).detected_address) {
+                                const addr = (result.user_location as any).detected_address;
+                                if (addr.city) setCity(addr.city);
+                                if (addr.area) setArea(addr.area);
+
+                                if (castedResult.search_expanded) {
+                                  toast({
+                                    title: "Search Expanded",
+                                    description: `No NGOs within 5km. Showing results from up to 50km away.`
+                                  });
+                                } else {
+                                  toast({
+                                    title: "Location Detected",
+                                    description: `Found verified NGOs nearby.`
+                                  });
+                                }
+                              } else {
+                                toast({ title: "Location Detected", description: "Found nearby pickup points." });
+                              }
+
+                              if (result.pickup_points.length === 0) {
+                                toast({ title: "No NGOs found nearby", description: "Try manually searching a wider area." });
+                              }
+                            } catch (e: any) {
+                              toast({ title: "Location Error", description: e.message, variant: "destructive" });
+                            } finally {
+                              setSearchingLocations(false);
+                            }
+                          }, (e) => {
+                            setSearchingLocations(false);
+                            toast({ title: "Permission denied", description: "Please enter city/area manually or allow location access.", variant: "destructive" });
+                          });
+                        } else {
+                          toast({ title: "Geolocation not supported", description: "Please enter location manually", variant: "destructive" });
+                        }
+                      }}
+                    >
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Use My Current Location
+                    </Button>
+                    <div className="relative flex items-center py-2">
+                      <div className="flex-grow border-t border-muted"></div>
+                      <span className="flex-shrink-0 mx-4 text-xs text-muted-foreground uppercase">Or search manually</span>
+                      <div className="flex-grow border-t border-muted"></div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">City</label>
+                    <Input
+                      placeholder="e.g. Mumbai"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
                     />
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${pickupPreference === option.id ? 'border-primary' : 'border-muted-foreground/30'
-                      }`}>
-                      {pickupPreference === option.id && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                      )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Area</label>
+                    <Input
+                      placeholder="e.g. Bandra"
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleSearchLocations}
+                  disabled={searchingLocations}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  {searchingLocations ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                  Find Verified NGOs Nearby
+                </Button>
+
+                {pickupPoints.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm text-muted-foreground font-medium">Select a location:</p>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {pickupPoints.map((point) => (
+                        <div
+                          key={point.uid}
+                          onClick={() => setSelectedPickupPoint(point)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-colors flex items-center justify-between ${selectedPickupPoint?.uid === point.uid
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                            }`}
+                        >
+                          <div>
+                            <p className="font-semibold">{point.name}</p>
+                            <p className="text-xs text-muted-foreground">{point.area}, {point.city}</p>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="outline" className="text-xs">{point.distance_km} km</Badge>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <p className="font-medium">{option.label}</p>
-                      <p className="text-sm text-muted-foreground">{option.description}</p>
-                    </div>
-                  </label>
-                ))}
+                  </div>
+                )}
+
+                {pickupPoints.length === 0 && !searchingLocations && city && area && (
+                  <p className="text-sm text-muted-foreground text-center italic">
+                    Click "Find" to see available safe locations in your area.
+                  </p>
+                )}
+
               </CardContent>
             </Card>
+
 
             <Button type="submit" size="lg" className="w-full" disabled={submitting}>
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
+                  Submitting Request...
                 </>
               ) : (
                 'Submit Request'

@@ -21,7 +21,7 @@ async def donate_book(uid: str, payload: dict, image_urls: list[str]):
     return ref.id
 
 
-async def search_books(filters: dict, exclude_uid: str = None):
+async def search_books(filters: dict, exclude_uid: str = None, blocked_uids: list[str] = None):
     query = db.collection("books").where(filter=FieldFilter("available", "==", True))
 
     for key, value in filters.items():
@@ -37,21 +37,46 @@ async def search_books(filters: dict, exclude_uid: str = None):
     docs = query.stream()
     results = []
     user_cache = {}
+    blocked_uids = blocked_uids or []
 
     for doc in docs:
         item = doc.to_dict()
+        donor_uid = item.get("donor_uid")
         
-        # Filter out own books in memory to avoid complex Firestore index requirements
-        if exclude_uid and item.get("donor_uid") == exclude_uid:
+        # Filter out own books or blocked donors
+        if (exclude_uid and donor_uid == exclude_uid) or (donor_uid in blocked_uids):
             continue
             
+        if donor_uid not in user_cache:
+            user_doc = db.collection("users").document(donor_uid).get()
+            if user_doc.exists:
+                user_data = user_doc.to_dict()
+                user_cache[donor_uid] = {
+                    "name": user_data.get("organization_name") or user_data.get("display_name") or "Anonymous",
+                    "reputation": user_data.get("reputation", 5.0),
+                    "mismatch_count": user_data.get("mismatch_count", 0)
+                }
+            else:
+                user_cache[donor_uid] = {"name": "Unknown", "reputation": 5.0, "mismatch_count": 0}
+
+        donor_info = user_cache[donor_uid]
+        
+        # Visibility logic
         item["id"] = doc.id
-        if "donor_name" not in item:
-            uid = item["donor_uid"]
-            if uid not in user_cache:
-                user_cache[uid] = await get_user_display_info(uid)
-            item["donor_name"] = user_cache[uid]["name"]
+        item["donor_name"] = donor_info["name"]
+        item["donor_reputation"] = donor_info["reputation"]
+        
+        visibility_score = donor_info["reputation"] - (donor_info["mismatch_count"] * 0.5)
+        item["visibility_score"] = visibility_score
+        
+        # Hide if extremely poor reputation (unless specifically allowed/different for NGOs)
+        if visibility_score < 1.0:
+            continue
+            
         results.append(item)
+
+    # Sort results by visibility score descending
+    results.sort(key=lambda x: x.get("visibility_score", 5.0), reverse=True)
 
     return results
 

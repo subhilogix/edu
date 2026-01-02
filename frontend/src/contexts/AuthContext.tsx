@@ -14,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   role: 'student' | 'ngo' | null;
   organizationName: string | null;
+  displayName: string | null;
   eduCredits: number;
 }
 
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // These will be useful for NGO flow
   const [role, setRole] = useState<'student' | 'ngo' | null>(null);
   const [organizationName, setOrganizationName] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [eduCredits, setEduCredits] = useState<number>(0);
 
   const refreshCredits = async () => {
@@ -50,6 +52,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!firebaseUser) {
         setRole(null);
         setOrganizationName(null);
+        setDisplayName(null);
         setLoading(false);
       } else {
         try {
@@ -58,6 +61,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           if (profile) {
             setRole(profile.role);
             setOrganizationName(profile.organization_name || null);
+            setDisplayName(profile.display_name || profile.organization_name || firebaseUser.displayName || null);
             setEduCredits(profile.edu_credits || 0);
           }
         } catch (error) {
@@ -78,6 +82,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         loading,
         role,
         organizationName,
+        displayName,
         eduCredits,
       }}
     >

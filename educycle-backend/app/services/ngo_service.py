@@ -1,5 +1,6 @@
 from datetime import datetime
 from app.db.firestore import db
+from firebase_admin import firestore
 
 
 async def create_bulk_request(ngo_uid: str, payload: dict):
@@ -31,6 +32,13 @@ async def fulfill_bulk_request(request_id: str, count: int):
     ref.update({
         "fulfilled": new_count,
         "status": status,
+    })
+
+
+async def block_donor(ngo_uid: str, donor_uid: str):
+    """Add a donor to the NGO's blocked list"""
+    db.collection("users").document(ngo_uid).update({
+        "blocked_uids": firestore.ArrayUnion([donor_uid])
     })
 
 

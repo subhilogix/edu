@@ -115,6 +115,10 @@ async def register_with_otp(request: RegisterOtpRequest):
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=error_msg)
 
+class LoginPasswordRequest(BaseModel):
+    email: str
+    password: str
+
 @router.post("/otp/login")
 async def login_with_otp(request: LoginOtpRequest):
     from app.services.email_service import verify_otp, delete_otp
@@ -142,6 +146,71 @@ async def login_with_otp(request: LoginOtpRequest):
         if "no user record found" in str(e).lower():
             raise HTTPException(status_code=404, detail="No account found with this email. Please create an account first.")
         raise HTTPException(status_code=404, detail="User not found")
+
+@router.post("/login")
+async def login_with_password(request: LoginPasswordRequest):
+    """Login with email and password for returning users"""
+    from firebase_admin import auth as firebase_auth
+    from fastapi import HTTPException
+    import requests
+    import os
+    from dotenv import load_dotenv
+    
+    # Explicitly load .env file
+    load_dotenv()
+    
+    # Get Firebase API key
+    FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY")
+    
+    # Debug logging
+    if not FIREBASE_API_KEY:
+        print("CRITICAL ERROR: FIREBASE_API_KEY is not set in environment or .env file.")
+    else:
+        masked_key = f"{FIREBASE_API_KEY[:5]}...{FIREBASE_API_KEY[-5:]}" if len(FIREBASE_API_KEY) > 10 else "***"
+        print(f"DEBUG: Using Firebase API Key: {masked_key}")
+        
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+    
+    payload = {
+        "email": request.email.strip().lower(),
+        "password": request.password,
+        "returnSecureToken": True
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        data = response.json()
+        
+        if response.status_code != 200:
+            error_message = data.get("error", {}).get("message", "Invalid credentials")
+            print(f"Firebase Auth Error: {error_message}")
+            
+            if "INVALID_PASSWORD" in error_message or "INVALID_LOGIN_CREDENTIALS" in error_message:
+                raise HTTPException(status_code=401, detail="Invalid email or password")
+            elif "EMAIL_NOT_FOUND" in error_message:
+                raise HTTPException(status_code=401, detail="No account found with this email")
+            elif "USER_DISABLED" in error_message:
+                raise HTTPException(status_code=403, detail="This account has been disabled")
+            else:
+                raise HTTPException(status_code=400, detail=f"Authentication failed: {error_message}")
+        
+        # Get user from Firebase Admin to create custom token
+        user = firebase_auth.get_user_by_email(request.email.strip().lower())
+        custom_token = firebase_auth.create_custom_token(user.uid)
+        
+        if isinstance(custom_token, bytes):
+            custom_token = custom_token.decode("utf-8")
+            
+        return {"status": "ok", "custom_token": custom_token}
+        
+    except HTTPException:
+        raise
+    except requests.exceptions.RequestException as e:
+        print(f"Network error during login: {str(e)}")
+        raise HTTPException(status_code=503, detail="Authentication service temporarily unavailable")
+    except Exception as e:
+        print(f"Unexpected error during login: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
 
 @router.get("/me")

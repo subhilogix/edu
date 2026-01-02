@@ -7,9 +7,9 @@ import ActionCard from '@/components/shared/ActionCard';
 import { Search, Gift, FileText, BarChart3, Sparkles } from 'lucide-react';
 
 const StudentHome = () => {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, displayName: authDisplayName } = useAuth();
   const navigate = useNavigate();
-  const displayName = user?.displayName || 'Student';
+  const displayName = authDisplayName || user?.displayName || 'Student';
 
   useEffect(() => {
     if (!loading && role === 'ngo') {

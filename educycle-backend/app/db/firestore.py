@@ -44,3 +44,10 @@ async def get_user_display_info(uid: str):
     
     return {"name": name, "location": location}
 
+
+async def get_blocked_uids(uid: str):
+    user = await get_user_by_uid(uid)
+    if not user:
+        return []
+    return user.get("blocked_uids", [])
+

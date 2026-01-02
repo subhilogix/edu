@@ -15,7 +15,7 @@ const Header = ({ userType: propUserType, userName: propUserName }: HeaderProps)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user: firebaseUser, role, organizationName, eduCredits } = useAuth();
+  const { user: firebaseUser, role, organizationName, displayName: authDisplayName, eduCredits } = useAuth();
 
   const userType = propUserType || role;
   const userName = propUserName || organizationName;
@@ -23,13 +23,11 @@ const Header = ({ userType: propUserType, userName: propUserName }: HeaderProps)
   const isLoginPage =
     location.pathname === '/' || location.pathname === '/ngo-login';
 
-  // ✅ Name resolution logic (IMPORTANT)
-  // Student → Google displayName from Firebase
-  // NGO → organization name from AuthContext or props
-  // Fallback → "User"
+  // ✅ Name resolution logic (Updated)
+  // Use displayName from AuthContext which fetches from backend profile
   const displayName = userType === 'student'
-    ? (firebaseUser?.displayName || 'User')
-    : (userName || 'User');
+    ? (authDisplayName || firebaseUser?.displayName || 'User')
+    : (userName || authDisplayName || 'User');
 
   const handleLogout = async () => {
     try {
@@ -75,6 +73,7 @@ const Header = ({ userType: propUserType, userName: propUserName }: HeaderProps)
               <>
                 <Link to="/student-home" className="nav-link">Home</Link>
                 <Link to="/search-books" className="nav-link">Find Books</Link>
+                <Link to="/distribution" className="nav-link">Impact Feed</Link>
                 <Link to="/notes" className="nav-link">Notes & PDFs</Link>
                 <Link to="/request-status" className="nav-link">My Requests</Link>
                 <Link to="/student-impact" className="nav-link">My Impact</Link>
@@ -86,7 +85,7 @@ const Header = ({ userType: propUserType, userName: propUserName }: HeaderProps)
                 <Link to="/ngo-dashboard" className="nav-link">Dashboard</Link>
                 <Link to="/ngo-find-books" className="nav-link">Find Books</Link>
                 <Link to="/ngo-my-requests" className="nav-link">My Requests</Link>
-                <Link to="/ngo-distribution" className="nav-link">Distribution</Link>
+                <Link to="/distribution" className="nav-link">Impact Feed</Link>
                 <Link to="/ngo-impact" className="nav-link">Impact</Link>
                 <Link to="/ngo-profile" className="nav-link">Profile</Link>
               </>
@@ -144,6 +143,7 @@ const Header = ({ userType: propUserType, userName: propUserName }: HeaderProps)
               <>
                 <Link to="/student-home" className="mobile-link">Home</Link>
                 <Link to="/search-books" className="mobile-link">Find Books</Link>
+                <Link to="/distribution" className="mobile-link">Impact Feed</Link>
                 <Link to="/notes" className="mobile-link">Notes</Link>
                 <Link to="/request-status" className="mobile-link">My Requests</Link>
                 <Link to="/student-impact" className="mobile-link">My Impact</Link>
@@ -155,7 +155,7 @@ const Header = ({ userType: propUserType, userName: propUserName }: HeaderProps)
                 <Link to="/ngo-dashboard" className="mobile-link">Dashboard</Link>
                 <Link to="/ngo-find-books" className="mobile-link">Find Books</Link>
                 <Link to="/ngo-my-requests" className="mobile-link">My Requests</Link>
-                <Link to="/ngo-distribution" className="mobile-link">Distribution</Link>
+                <Link to="/distribution" className="mobile-link">Impact Feed</Link>
                 <Link to="/ngo-impact" className="mobile-link">Impact</Link>
                 <Link to="/ngo-profile" className="mobile-link">Profile</Link>
               </>

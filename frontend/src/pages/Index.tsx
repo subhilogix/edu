@@ -71,6 +71,42 @@ const Index = () => {
 
   const handleVerifyAndAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // For login mode, use password directly (no OTP)
+    if (!isSignUpMode) {
+      if (!email || !password) {
+        toast({ title: 'Error', description: 'Please enter email and password', variant: 'destructive' });
+        return;
+      }
+
+      try {
+        setIsEmailLoading(true);
+        const result = (await authApi.loginWithPassword(email.trim().toLowerCase(), password)) as any;
+
+        if (result.custom_token) {
+          const { signInWithCustomToken } = await import('@/lib/firebase');
+          await signInWithCustomToken(result.custom_token);
+
+          toast({
+            title: 'Welcome Back',
+            description: `Signed in as ${email}`,
+          });
+          navigate('/student-home');
+        }
+      } catch (error: any) {
+        console.error('Login error:', error);
+        toast({
+          title: 'Login Failed',
+          description: error.message || 'Invalid email or password',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsEmailLoading(false);
+      }
+      return;
+    }
+
+    // Sign-up mode: verify OTP
     console.log('Attempting to verify Student OTP for:', email);
     if (!otp) {
       toast({ title: 'Error', description: 'Please enter the OTP', variant: 'destructive' });
@@ -83,31 +119,26 @@ const Index = () => {
       setIsEmailLoading(true);
       let customToken;
 
-      if (isSignUpMode) {
-        if (!password || !fullName || !city || !area) {
-          toast({ title: 'Error', description: 'Please fill all fields', variant: 'destructive' });
-          return;
-        }
-
-        const result = (await authApi.registerWithOtp({
-          email: normalizedEmail,
-          otp,
-          password,
-          role: 'student',
-          metadata: { fullName, city, area }
-        })) as any;
-        customToken = result.custom_token;
-      } else {
-        const result = (await authApi.loginWithOtp(normalizedEmail, otp)) as any;
-        customToken = result.custom_token;
+      if (!password || !fullName || !city || !area) {
+        toast({ title: 'Error', description: 'Please fill all fields', variant: 'destructive' });
+        return;
       }
+
+      const result = (await authApi.registerWithOtp({
+        email: normalizedEmail,
+        otp,
+        password,
+        role: 'student',
+        metadata: { fullName, city, area }
+      })) as any;
+      customToken = result.custom_token;
 
       if (customToken) {
         const { signInWithCustomToken } = await import('@/lib/firebase');
         await signInWithCustomToken(customToken);
 
         toast({
-          title: isSignUpMode ? 'Account Created' : 'Welcome Back',
+          title: 'Account Created',
           description: `Signed in as ${email}`,
         });
         navigate('/student-home');
@@ -156,6 +187,42 @@ const Index = () => {
 
   const handleNGOVerifyAndAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // For login mode, use password directly (no OTP)
+    if (!isNgoSignUpMode) {
+      if (!ngoEmail || !ngoPassword) {
+        toast({ title: 'Error', description: 'Please enter email and password', variant: 'destructive' });
+        return;
+      }
+
+      try {
+        setIsNgoLoading(true);
+        const result = (await authApi.loginWithPassword(ngoEmail.trim().toLowerCase(), ngoPassword)) as any;
+
+        if (result.custom_token) {
+          const { signInWithCustomToken } = await import('@/lib/firebase');
+          await signInWithCustomToken(result.custom_token);
+
+          toast({
+            title: 'Welcome Back',
+            description: `Signed in as ${ngoEmail}`,
+          });
+          navigate('/ngo-dashboard');
+        }
+      } catch (error: any) {
+        console.error('NGO Login error:', error);
+        toast({
+          title: 'Login Failed',
+          description: error.message || 'Invalid email or password',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsNgoLoading(false);
+      }
+      return;
+    }
+
+    // Sign-up mode: verify OTP
     console.log('Attempting to verify NGO OTP for:', ngoEmail);
     if (!ngoOtp) {
       toast({ title: 'Error', description: 'Please enter the OTP', variant: 'destructive' });
@@ -167,31 +234,26 @@ const Index = () => {
       setIsNgoLoading(true);
       let customToken;
 
-      if (isNgoSignUpMode) {
-        if (!ngoPassword || !ngoOrgName || !ngoCity || !ngoArea) {
-          toast({ title: 'Error', description: 'Please fill all fields', variant: 'destructive' });
-          return;
-        }
-
-        const result = (await authApi.registerWithOtp({
-          email: normalizedEmail,
-          otp: ngoOtp,
-          password: ngoPassword,
-          role: 'ngo',
-          metadata: { organization_name: ngoOrgName, city: ngoCity, area: ngoArea }
-        })) as any;
-        customToken = result.custom_token;
-      } else {
-        const result = (await authApi.loginWithOtp(normalizedEmail, ngoOtp)) as any;
-        customToken = result.custom_token;
+      if (!ngoPassword || !ngoOrgName || !ngoCity || !ngoArea) {
+        toast({ title: 'Error', description: 'Please fill all fields', variant: 'destructive' });
+        return;
       }
+
+      const result = (await authApi.registerWithOtp({
+        email: normalizedEmail,
+        otp: ngoOtp,
+        password: ngoPassword,
+        role: 'ngo',
+        metadata: { organization_name: ngoOrgName, city: ngoCity, area: ngoArea }
+      })) as any;
+      customToken = result.custom_token;
 
       if (customToken) {
         const { signInWithCustomToken } = await import('@/lib/firebase');
         await signInWithCustomToken(customToken);
 
         toast({
-          title: isNgoSignUpMode ? 'NGO Account Created' : 'Welcome Back',
+          title: 'NGO Account Created',
           description: `Signed in as ${ngoEmail}`,
         });
         navigate('/ngo-dashboard');
@@ -331,14 +393,23 @@ const Index = () => {
                   <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or with Email</span></div>
                 </div>
 
-                <form onSubmit={otpSent ? handleVerifyAndAuth : handleSendOtp} className="space-y-3">
-                  {!otpSent ? (
+                <form onSubmit={isSignUpMode ? (otpSent ? handleVerifyAndAuth : handleSendOtp) : handleVerifyAndAuth} className="space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="Email Address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isEmailLoading || isGoogleLoading}
+                  />
+
+                  {!isSignUpMode ? (
                     <>
                       <Input
-                        type="email"
-                        placeholder="Email Address"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                         required
                         disabled={isEmailLoading || isGoogleLoading}
                       />
@@ -350,10 +421,22 @@ const Index = () => {
                         {isEmailLoading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          'Send OTP'
+                          'Login'
                         )}
                       </Button>
                     </>
+                  ) : !otpSent ? (
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isEmailLoading || isGoogleLoading}
+                    >
+                      {isEmailLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Send OTP'
+                      )}
+                    </Button>
                   ) : (
                     <>
                       <div className="bg-primary/5 p-3 rounded-lg mb-2">
@@ -379,41 +462,37 @@ const Index = () => {
                         className="text-center text-lg tracking-widest font-bold"
                       />
 
-                      {isSignUpMode && (
-                        <>
-                          <Input
-                            placeholder="Full Name"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            required
-                            disabled={isEmailLoading || isGoogleLoading}
-                          />
-                          <div className="grid grid-cols-2 gap-3">
-                            <Input
-                              placeholder="City"
-                              value={city}
-                              onChange={(e) => setCity(e.target.value)}
-                              required
-                              disabled={isEmailLoading || isGoogleLoading}
-                            />
-                            <Input
-                              placeholder="Area"
-                              value={area}
-                              onChange={(e) => setArea(e.target.value)}
-                              required
-                              disabled={isEmailLoading || isGoogleLoading}
-                            />
-                          </div>
-                          <Input
-                            type="password"
-                            placeholder="Create Password (min 6 chars)"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            disabled={isEmailLoading || isGoogleLoading}
-                          />
-                        </>
-                      )}
+                      <Input
+                        placeholder="Full Name"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required
+                        disabled={isEmailLoading || isGoogleLoading}
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          placeholder="City"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          required
+                          disabled={isEmailLoading || isGoogleLoading}
+                        />
+                        <Input
+                          placeholder="Area"
+                          value={area}
+                          onChange={(e) => setArea(e.target.value)}
+                          required
+                          disabled={isEmailLoading || isGoogleLoading}
+                        />
+                      </div>
+                      <Input
+                        type="password"
+                        placeholder="Create Password (min 6 chars)"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        disabled={isEmailLoading || isGoogleLoading}
+                      />
 
                       <Button
                         type="submit"
@@ -423,7 +502,7 @@ const Index = () => {
                         {isEmailLoading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          isSignUpMode ? 'Verify & Sign Up' : 'Verify & Login'
+                          'Verify & Sign Up'
                         )}
                       </Button>
                     </>
@@ -459,14 +538,23 @@ const Index = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <form onSubmit={ngoOtpSent ? handleNGOVerifyAndAuth : handleNGOSendOtp} className="space-y-3">
-                  {!ngoOtpSent ? (
+                <form onSubmit={isNgoSignUpMode ? (ngoOtpSent ? handleNGOVerifyAndAuth : handleNGOSendOtp) : handleNGOVerifyAndAuth} className="space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="Organization Email"
+                    value={ngoEmail}
+                    onChange={(e) => setNgoEmail(e.target.value)}
+                    required
+                    disabled={isNgoLoading}
+                  />
+
+                  {!isNgoSignUpMode ? (
                     <>
                       <Input
-                        type="email"
-                        placeholder="Organization Email"
-                        value={ngoEmail}
-                        onChange={(e) => setNgoEmail(e.target.value)}
+                        type="password"
+                        placeholder="Password"
+                        value={ngoPassword}
+                        onChange={(e) => setNgoPassword(e.target.value)}
                         required
                         disabled={isNgoLoading}
                       />
@@ -479,10 +567,23 @@ const Index = () => {
                         {isNgoLoading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          'Send NGO Verification OTP'
+                          'Login'
                         )}
                       </Button>
                     </>
+                  ) : !ngoOtpSent ? (
+                    <Button
+                      type="submit"
+                      variant="success"
+                      className="w-full"
+                      disabled={isNgoLoading}
+                    >
+                      {isNgoLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Send Verification OTP'
+                      )}
+                    </Button>
                   ) : (
                     <>
                       <div className="bg-success/5 p-3 rounded-lg mb-2">
@@ -508,41 +609,37 @@ const Index = () => {
                         className="text-center text-lg tracking-widest font-bold"
                       />
 
-                      {isNgoSignUpMode && (
-                        <>
-                          <Input
-                            placeholder="Organization Name"
-                            value={ngoOrgName}
-                            onChange={(e) => setNgoOrgName(e.target.value)}
-                            required
-                            disabled={isNgoLoading}
-                          />
-                          <div className="grid grid-cols-2 gap-3">
-                            <Input
-                              placeholder="City"
-                              value={ngoCity}
-                              onChange={(e) => setNgoCity(e.target.value)}
-                              required
-                              disabled={isNgoLoading}
-                            />
-                            <Input
-                              placeholder="Area"
-                              value={ngoArea}
-                              onChange={(e) => setNgoArea(e.target.value)}
-                              required
-                              disabled={isNgoLoading}
-                            />
-                          </div>
-                          <Input
-                            type="password"
-                            placeholder="Dashboard Password"
-                            value={ngoPassword}
-                            onChange={(e) => setNgoPassword(e.target.value)}
-                            required
-                            disabled={isNgoLoading}
-                          />
-                        </>
-                      )}
+                      <Input
+                        placeholder="Organization Name"
+                        value={ngoOrgName}
+                        onChange={(e) => setNgoOrgName(e.target.value)}
+                        required
+                        disabled={isNgoLoading}
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          placeholder="City"
+                          value={ngoCity}
+                          onChange={(e) => setNgoCity(e.target.value)}
+                          required
+                          disabled={isNgoLoading}
+                        />
+                        <Input
+                          placeholder="Area"
+                          value={ngoArea}
+                          onChange={(e) => setNgoArea(e.target.value)}
+                          required
+                          disabled={isNgoLoading}
+                        />
+                      </div>
+                      <Input
+                        type="password"
+                        placeholder="Create Password"
+                        value={ngoPassword}
+                        onChange={(e) => setNgoPassword(e.target.value)}
+                        required
+                        disabled={isNgoLoading}
+                      />
 
                       <Button
                         type="submit"
@@ -553,7 +650,7 @@ const Index = () => {
                         {isNgoLoading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          isNgoSignUpMode ? 'Verify & Create NGO Account' : 'Verify & Login'
+                          'Verify & Create Account'
                         )}
                       </Button>
                     </>

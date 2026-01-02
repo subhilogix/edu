@@ -137,10 +137,10 @@ const NGODashboard = () => {
               iconBgColor="bg-secondary/20"
             />
             <ActionCard
-              title="Distribute Books"
-              description="Record book distributions to students"
+              title="Post Impact"
+              description="Share book distribution highlights with photos"
               icon={Send}
-              to="/ngo-distribution"
+              to="/create-distribution"
               iconColor="text-accent"
               iconBgColor="bg-accent/10"
             />

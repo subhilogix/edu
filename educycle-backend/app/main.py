@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, books, requests, chats, notes, ngo, feedback, impact, notifications, credits
+from app.api import auth, books, requests, chats, notes, ngo, feedback, impact, notifications, credits, location, distribution
 
 app = FastAPI(
     title="EduCycle Backend",
@@ -43,3 +43,5 @@ app.include_router(feedback.router, prefix="/feedback", tags=["Feedback"])
 app.include_router(impact.router, prefix="/impact", tags=["Impact"])
 app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 app.include_router(credits.router, prefix="/credits", tags=["Credits"])
+app.include_router(location.router, prefix="/location", tags=["Location"])
+app.include_router(distribution.router, prefix="/distribution", tags=["Distribution"])

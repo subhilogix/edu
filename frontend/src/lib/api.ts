@@ -333,6 +333,13 @@ export const authApi = {
       body: JSON.stringify({ email, otp }),
     });
   },
+
+  loginWithPassword: async (email: string, password: string) => {
+    return apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  },
 };
 
 // Credits API
@@ -346,3 +353,62 @@ export const creditsApi = {
   },
 };
 
+// Location API
+export const locationApi = {
+  searchPickupPoints: async (city?: string, area?: string, lat?: number, lon?: number, radius: number = 5.0) => {
+    const params = new URLSearchParams({ radius: radius.toString() });
+
+    if (lat && lon) {
+      params.append('lat', lat.toString());
+      params.append('lon', lon.toString());
+    } else if (city && area) {
+      params.append('city', city);
+      params.append('area', area);
+    }
+
+    return apiRequest<{
+      user_location: { lat: number; lon: number; detected_address?: any };
+      pickup_points: Array<{
+        uid: string;
+        name: string;
+        area: string;
+        city: string;
+        distance_km: number;
+      }>;
+      search_expanded?: boolean;
+    }>(`/location/pickup-points?${params.toString()}`);
+  }
+};
+
+// Distribution API
+export const distributionApi = {
+  list: async (limit: number = 20) => {
+    return apiRequest<any[]>(`/distribution/?limit=${limit}`);
+  },
+
+  create: async (data: any, images: File[]) => {
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify(data));
+    images.forEach(img => formData.append('images', img));
+    return apiRequestMultipart('/distribution/', formData);
+  },
+
+  toggleLike: async (eventId: string) => {
+    return apiRequest(`/distribution/${eventId}/like`, { method: 'POST' });
+  },
+
+  addComment: async (eventId: string, text: string) => {
+    return apiRequest(`/distribution/${eventId}/comment`, {
+      method: 'POST',
+      body: JSON.stringify({ text })
+    });
+  },
+
+  getComments: async (eventId: string) => {
+    return apiRequest<any[]>(`/distribution/${eventId}/comments`);
+  },
+
+  delete: async (eventId: string) => {
+    return apiRequest(`/distribution/${eventId}`, { method: 'DELETE' });
+  }
+};
