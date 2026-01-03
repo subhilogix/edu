@@ -81,8 +81,6 @@ const DonateBook = () => {
 
   const handleSelectPickup = (point: any) => {
     setSelectedPickupPoint(point);
-    setCity(point.city);
-    setArea(point.area);
     toast({
       title: "Safe Location Selected",
       description: `You can drop off the book at ${point.name}`,
@@ -477,33 +475,33 @@ const DonateBook = () => {
                             try {
                               const result = await locationApi.searchPickupPoints();
                               setPickupPoints(result.pickup_points);
-                              
+
                               if (result.user_location && (result.user_location as any).detected_address) {
                                 const addr = (result.user_location as any).detected_address;
                                 if (addr.city) setCity(addr.city);
                                 if (addr.area) setArea(addr.area);
-                                toast({ 
-                                  title: "Location Detected via IP", 
-                                  description: `Permission denied, but found location near ${addr.area || addr.city}.` 
+                                toast({
+                                  title: "Location Detected via IP",
+                                  description: `Permission denied, but found location near ${addr.area || addr.city}.`
                                 });
                               }
                             } catch (fallbackError) {
-                                setSearchingLocations(false);
-                                let errorMessage = "Please enter city/area manually.";
-                                let errorTitle = "Location Access Denied";
-                                
-                                switch(error.code) {
-                                  case 1: // PERMISSION_DENIED
-                                    errorTitle = "Permission Denied";
-                                    errorMessage = "Please enable location access in settings or enter address manually.";
-                                    break;
-                                }
-                                
-                                toast({ 
-                                  title: errorTitle, 
-                                  description: errorMessage, 
-                                  variant: "destructive" 
-                                });
+                              setSearchingLocations(false);
+                              let errorMessage = "Please enter city/area manually.";
+                              let errorTitle = "Location Access Denied";
+
+                              switch (error.code) {
+                                case 1: // PERMISSION_DENIED
+                                  errorTitle = "Permission Denied";
+                                  errorMessage = "Please enable location access in settings or enter address manually.";
+                                  break;
+                              }
+
+                              toast({
+                                title: errorTitle,
+                                description: errorMessage,
+                                variant: "destructive"
+                              });
                             } finally {
                               setSearchingLocations(false);
                             }

@@ -40,23 +40,41 @@ async def reverse_geocode_coordinates(lat: float, lon: float):
             data = res.json()
             address = data.get("address", {})
             
-            # Try to find city/area equivalent fields
-            city = address.get("city") or address.get("town") or address.get("village") or address.get("county") or address.get("state_district") or ""
-            area = address.get("suburb") or address.get("neighbourhood") or address.get("residential") or address.get("road") or ""
-            
             # Clean up city names
-            for suffix in [" District", " Corporation", " City", " Municipal Corporation"]:
-                if city.endswith(suffix):
-                    city = city.replace(suffix, "")
-                    
-            # Clean up area names (OSM often adds "Zone XX" for Indian cities)
-            area = re.sub(r"Zone \d+ ", "", area)
-            area = re.sub(r"Ward \d+ ", "", area)
+            city = address.get("city") or address.get("town") or address.get("village") or address.get("county") or address.get("state_district") or ""
+            
+            # For area, we try suburb first, but if it has "Zone", we might prefer county if suburb is just a number
+            area = address.get("suburb") or address.get("neighbourhood") or address.get("road") or address.get("residential") or ""
+            
+            # If county is available and suburb seems like a generic zone name, use county as fallback for area
+            county = address.get("county", "")
+            if county and ("Zone" in area or "Ward" in area or not area):
+                 # Only swap if area is messy or empty
+                 if not area or "Zone" in area:
+                     area = county
+
+            # General cleaning for both city and area
+            def clean_name(name):
+                # Remove common Indian administrative suffixes/prefixes
+                name = re.sub(r"(?i)\s+(District|Corporation|City|Municipal Corporation|Taluk)$", "", name)
+                name = re.sub(r"(?i)^(Zone|Ward|Division)\s+\d+\s*", "", name)
+                name = re.sub(r"(?i)^CMWSSB\s+Division\s+\d+\s*", "", name)
+                # Handle cases like "Zone 3 Madhavaram" -> "Madhavaram"
+                name = re.sub(r"(?i)Zone\s+\d+\s+", "", name)
+                name = re.sub(r"(?i)Ward\s+\d+\s+", "", name)
+                return name.strip()
+
+            city = clean_name(city)
+            area = clean_name(area)
+            
+            # If they ended up being the same, keep area as is but don't duplicate in full string
+            display_name = f"{area}, {city}" if area and city and area.lower() != city.lower() else (area or city)
 
             return {
-                "city": city.strip(), 
-                "area": area.strip(), 
-                "display_name": data.get("display_name")
+                "city": city, 
+                "area": area, 
+                "display_name": display_name,
+                "raw_display_name": data.get("display_name") # Keep original just in case
             }
     except Exception as e:
         print(f"Reverse geocode failed: {e}")
