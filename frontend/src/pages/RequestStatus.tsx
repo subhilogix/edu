@@ -134,7 +134,7 @@ const RequestStatus = () => {
         title: "Success!",
         description: "Book marked as collected. Thank you for using EduCycle!",
       });
-      navigate(`/feedback/${requestId}`);
+      loadRequests();
     } catch (error: any) {
       toast({
         title: "Error",

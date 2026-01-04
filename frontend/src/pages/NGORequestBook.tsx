@@ -217,25 +217,7 @@ const NGORequestBook = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
 
-            {/* NGO Quantity Input (Always show on this NGO page) */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Quantity Required</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Input
-                  type="number"
-                  min={1}
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  className="max-w-[200px]"
-                  placeholder="Number of copies"
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Specify the number of copies you need for your students.
-                </p>
-              </CardContent>
-            </Card>
+
 
             {/* Reason */}
             <Card>

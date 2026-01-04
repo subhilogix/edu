@@ -248,10 +248,6 @@ export const notesApi = {
     return apiRequestMultipart('/notes/', formData);
   },
 
-<<<<<<< HEAD
-  delete: async (noteId: string) => {
-    return apiRequest(`/notes/${noteId}`, { method: 'DELETE' });
-=======
   listMyNotes: async () => {
     return apiRequest('/notes/me');
   },
@@ -260,7 +256,6 @@ export const notesApi = {
     return apiRequest(`/notes/${noteId}`, {
       method: 'DELETE',
     });
->>>>>>> 2685659 (Updated Donations and Notes&PDFs)
   },
 };
 

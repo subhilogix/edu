@@ -25,11 +25,7 @@ async def list_notes(filters: dict):
     docs = query.stream()
     return [{**doc.to_dict(), "id": doc.id} for doc in docs]
 
-<<<<<<< HEAD
 
-async def delete_note(note_id: str):
-    db.collection("notes").document(note_id).delete()
-=======
 async def delete_note(note_id: str, uid: str):
     ref = db.collection("notes").document(note_id)
     doc = ref.get()
@@ -42,4 +38,4 @@ async def delete_note(note_id: str, uid: str):
 
     ref.delete()
     return True
->>>>>>> 2685659 (Updated Donations and Notes&PDFs)
+

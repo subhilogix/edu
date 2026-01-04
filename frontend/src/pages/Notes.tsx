@@ -10,12 +10,9 @@ import { subjectOptions, classOptions } from '@/data/mockData';
 import { notesApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-<<<<<<< HEAD
-import { useAuth } from '@/contexts/AuthContext';
-=======
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { auth } from '@/lib/firebase';
->>>>>>> 2685659 (Updated Donations and Notes&PDFs)
+import { useAuth } from '@/contexts/AuthContext';
 
 const Notes = () => {
   const { toast } = useToast();
@@ -146,16 +143,6 @@ const Notes = () => {
     }
   };
 
-  const handleDelete = async (noteId: string) => {
-    try {
-        await notesApi.delete(noteId);
-        toast({ title: "Note deleted", description: "The note has been removed." });
-        fetchNotes();
-    } catch (error: any) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
   const filteredNotes = notes.filter(note => {
     const matchesSearch = note.title?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSubject = !selectedSubject || note.subject === selectedSubject;
@@ -264,33 +251,6 @@ const Notes = () => {
                 />
               </div>
             </div>
-<<<<<<< HEAD
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 block">Filter by Class</label>
-            <div className="flex flex-wrap gap-2">
-              <Badge
-                variant={!selectedClass ? 'default' : 'outline'}
-                className="cursor-pointer px-3 py-1"
-                onClick={() => setSelectedClass('')}
-              >
-                All Classes
-              </Badge>
-              {classOptions.map(cls => (
-                <Badge
-                  key={cls}
-                  variant={selectedClass === cls ? 'default' : 'outline'}
-                  className="cursor-pointer px-3 py-1"
-                  onClick={() => setSelectedClass(selectedClass === cls ? '' : cls)}
-                >
-                  Class {cls}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
-=======
->>>>>>> 2685659 (Updated Donations and Notes&PDFs)
 
             {/* Filters */}
             <div className="flex flex-wrap gap-6 mb-8 p-4 bg-muted/30 rounded-xl">
@@ -372,42 +332,6 @@ const Notes = () => {
                         </div>
                       </div>
 
-<<<<<<< HEAD
-                  <div className="flex items-center justify-between mt-2 pt-4 border-t border-border/50">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">Downloads</span>
-                      <span className="text-sm font-bold">{note.downloads || 0}</span>
-                    </div>
-                    <div className="flex gap-2">
-                       {user && note.owner_uid === user.uid && (
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            className="gap-2 shadow-sm"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                if (confirm('Are you sure you want to delete this note?')) {
-                                    handleDelete(note.id);
-                                }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                       )}
-                       <a href={note.file_url} target="_blank" rel="noopener noreferrer" className="block !w-auto">
-                        <Button size="sm" className="gap-2 shadow-sm">
-                            <Download className="h-4 w-4" />
-                            Download
-                        </Button>
-                       </a>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-=======
                       <div className="flex items-center justify-between mt-2 pt-4 border-t border-border/50">
                         <div className="flex flex-col">
                           <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">Downloads</span>
@@ -437,7 +361,6 @@ const Notes = () => {
                 ))}
               </div>
             )}
->>>>>>> 2685659 (Updated Donations and Notes&PDFs)
 
             {!loading && filteredNotes.length === 0 && (
               <div className="text-center py-20 bg-muted/20 rounded-3xl border-2 border-dashed border-muted/50">
