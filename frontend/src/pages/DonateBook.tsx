@@ -215,7 +215,7 @@ const DonateBook = () => {
             <h1 className="text-3xl font-display font-bold mb-4">Book Listed!</h1>
             <p className="text-muted-foreground mb-6">
               Thank you for your generosity! Your book is now visible to students who need it.
-              You'll earn <strong className="text-primary">50 EduCredits</strong> when someone receives it.
+              You have earned <strong className="text-primary">{donationType === 'set' ? '200' : '50'} EduCredits</strong> for making a difference!
             </p>
 
             <Card variant="stat" className="mb-8">
@@ -232,7 +232,17 @@ const DonateBook = () => {
             </Card>
 
             <div className="flex gap-3 justify-center">
-              <Button onClick={() => setSubmitted(false)}>
+              <Button onClick={() => {
+                setBookName('');
+                setSubject('');
+                setBookClass('');
+                setBoard('');
+                setCondition('');
+                setDescription('');
+                setImages([]);
+                setSelectedPickupPoint(null);
+                setSubmitted(false);
+              }}>
                 <Gift className="h-4 w-4 mr-2" />
                 Donate Another Book
               </Button>

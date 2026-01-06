@@ -1,6 +1,7 @@
 from datetime import datetime
 from app.db.firestore import db, get_user_display_info
 from google.cloud.firestore_v1.base_query import FieldFilter
+from app.services.credits_service import add_edu_credits
 
 
 async def donate_book(uid: str, payload: dict, image_urls: list[str]):
@@ -19,6 +20,13 @@ async def donate_book(uid: str, payload: dict, image_urls: list[str]):
     }
 
     ref.set(data)
+    
+    # Award credits immediately upon listing
+    is_set = payload.get("is_set", False)
+    points = 200 if is_set else 50
+    reason = f"Listed {'a book set' if is_set else 'a book'} for donation: {payload.get('title', 'Unknown')}"
+    await add_edu_credits(uid, points, reason)
+
     return ref.id
 
 

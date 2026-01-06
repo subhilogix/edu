@@ -74,16 +74,13 @@ async def complete(request_id: str):
     req = await get_request(request_id)
     if req:
         from app.services.book_service import update_book_status, get_book
-        from app.services.credits_service import add_edu_credits
-        
         await update_book_status(req["book_id"], "donated")
         
-        # Award credits to donor
-        book = await get_book(req["book_id"])
-        is_set = book.get("is_set", False) if book else False
-        points = 200 if is_set else 50
-        reason = f"Successfully donated {'a book set' if is_set else 'a book'}: {book.get('title', 'Unknown') if book else 'Unknown'}"
-        
-        await add_edu_credits(req["donor_uid"], points, reason)
+        # Credits are now awarded upon listing, not completion
+        # book = await get_book(req["book_id"])
+        # is_set = book.get("is_set", False) if book else False
+        # points = 200 if is_set else 50
+        # reason = f"Successfully donated {'a book set' if is_set else 'a book'}: {book.get('title', 'Unknown') if book else 'Unknown'}"
+        # await add_edu_credits(req["donor_uid"], points, reason)
         
     return {"status": "completed"}
