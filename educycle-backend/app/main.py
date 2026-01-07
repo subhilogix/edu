@@ -7,7 +7,7 @@ app = FastAPI(
     title="EduCycle Backend",
     version="1.0.0",
     description="Backend APIs for EduCycle platform",
-    redirect_slashes=False  # Crucial: prevents 400/307 on OPTIONS requests
+    redirect_slashes=True  # Changed from False to support current frontend version
 )
 
 # CORS (frontend will call this)
