@@ -130,11 +130,11 @@ export const booksApi = {
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.append(key, value);
     });
-    return apiRequest(`/books/search?${params.toString()}`);
+    return apiRequest(`/books/search/?${params.toString()}`);
   },
 
   getById: async (bookId: string) => {
-    return apiRequest(`/books/${bookId}`);
+    return apiRequest(`/books/${bookId}/`);
   },
 
   donate: async (bookData: any, images: File[]) => {
@@ -148,15 +148,15 @@ export const booksApi = {
       formData.append('images', image);
     });
 
-    return apiRequestMultipart('/books/donate', formData);
+    return apiRequestMultipart('/books/donate/', formData);
   },
 
   listMyDonations: async () => {
-    return apiRequest('/books/user/me');
+    return apiRequest('/books/user/me/');
   },
 
   delete: async (bookId: string) => {
-    return apiRequest(`/books/${bookId}`, {
+    return apiRequest(`/books/${bookId}/`, {
       method: 'DELETE',
     });
   },
@@ -237,7 +237,7 @@ export const notesApi = {
       }
     });
     const queryString = params.toString();
-    return apiRequest(`/notes${queryString ? `?${queryString}` : ''}`);
+    return apiRequest(`/notes/${queryString ? `?${queryString}` : ''}`);
   },
 
   upload: async (noteData: any, file: File) => {
@@ -249,7 +249,7 @@ export const notesApi = {
   },
 
   listMyNotes: async () => {
-    return apiRequest('/notes/me');
+    return apiRequest('/notes/me/');
   },
 
   delete: async (noteId: string) => {
@@ -262,11 +262,11 @@ export const notesApi = {
 // NGO API
 export const ngoApi = {
   listBulkRequests: async () => {
-    return apiRequest('/ngo/bulk-request');
+    return apiRequest('/ngo/bulk-request/');
   },
 
   createBulkRequest: async (requestData: any) => {
-    return apiRequest('/ngo/bulk-request', {
+    return apiRequest('/ngo/bulk-request/', {
       method: 'POST',
       body: JSON.stringify(requestData),
     });
@@ -369,7 +369,7 @@ export const creditsApi = {
   },
 
   getMyCredits: async () => {
-    return apiRequest<{ edu_credits: number }>('/credits/me');
+    return apiRequest<{ edu_credits: number }>('/credits/me/');
   },
 };
 
