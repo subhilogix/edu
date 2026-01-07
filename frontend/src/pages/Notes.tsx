@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Download, FileText, File, Upload, Loader2, Plus, Trash2 } from 'lucide-react';
 import { subjectOptions, classOptions } from '@/data/mockData';
-import { notesApi } from '@/lib/api';
+import { notesApi, getFullApiUrl } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -34,6 +35,7 @@ const Notes = () => {
   const [uploadSubject, setUploadSubject] = useState('');
   const [uploadClass, setUploadClass] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     fetchNotes();
@@ -105,6 +107,15 @@ const Notes = () => {
       return;
     }
 
+    if (!termsAccepted) {
+      toast({
+        title: "Terms not accepted",
+        description: "Please accept the terms and conditions to upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setUploadLoading(true);
       const noteData = {
@@ -128,6 +139,7 @@ const Notes = () => {
       setUploadSubject('');
       setUploadClass('');
       setUploadFile(null);
+      setTermsAccepted(false);
 
       // Refresh list
       fetchNotes();
@@ -223,7 +235,26 @@ const Notes = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={uploadLoading}>
+
+                <div className="flex items-start space-x-2 py-2">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor="terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      I accept the terms and conditions
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      I certify that these notes are my own work and are not copied or downloaded from any other official websites or books.
+                    </p>
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={uploadLoading || !termsAccepted}>
                   {uploadLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
                   {uploadLoading ? "Uploading..." : "Start Upload"}
                 </Button>
@@ -348,7 +379,7 @@ const Notes = () => {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
-                          <a href={note.file_url} target="_blank" rel="noopener noreferrer" className="block !w-auto">
+                          <a href={getFullApiUrl(note.file_url)} target="_blank" rel="noopener noreferrer" className="block !w-auto">
                             <Button size="sm" className="gap-2 shadow-sm">
                               <Download className="h-4 w-4" />
                               Download
@@ -425,7 +456,7 @@ const Notes = () => {
                             <Trash2 className="h-4 w-4" />
                             <span className="ml-2">Remove</span>
                           </Button>
-                          <a href={note.file_url} target="_blank" rel="noopener noreferrer" className="block !w-auto">
+                          <a href={getFullApiUrl(note.file_url)} target="_blank" rel="noopener noreferrer" className="block !w-auto">
                             <Button size="sm" variant="outline" className="gap-2 shadow-sm">
                               <Download className="h-4 w-4" />
                               View

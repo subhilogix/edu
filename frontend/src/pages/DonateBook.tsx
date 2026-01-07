@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Gift, Upload, CheckCircle, Camera, Loader2, Shield, Search, MapPin, Trash2, Package } from 'lucide-react';
 import { boardOptions, subjectOptions, classOptions } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
-import { booksApi, locationApi } from '@/lib/api';
+import { booksApi, locationApi, getFullApiUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useEffect } from 'react';
 
 const conditionOptions = [
@@ -45,6 +46,7 @@ const DonateBook = () => {
   const [searchingLocations, setSearchingLocations] = useState(false);
   const [pickupPoints, setPickupPoints] = useState<any[]>([]);
   const [selectedPickupPoint, setSelectedPickupPoint] = useState<any>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -159,6 +161,15 @@ const DonateBook = () => {
       return;
     }
 
+    if (!termsAccepted) {
+      toast({
+        title: "Terms not accepted",
+        description: "Please verify that the books are genuine and trusted.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -241,6 +252,7 @@ const DonateBook = () => {
                 setDescription('');
                 setImages([]);
                 setSelectedPickupPoint(null);
+                setTermsAccepted(false);
                 setSubmitted(false);
               }}>
                 <Gift className="h-4 w-4 mr-2" />
@@ -620,7 +632,26 @@ const DonateBook = () => {
                   Always prioritize meeting at verified NGO locations or safe public spaces for the book handover.
                 </div>
 
-                <Button type="submit" size="lg" className="w-full" variant="secondary" disabled={submitting}>
+                <div className="flex items-start space-x-2 py-2 px-1">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor="terms"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      I verify the authenticity of this book
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      I confirm that the books donated are verified, genuine, and can be trusted for use by other students.
+                    </p>
+                  </div>
+                </div>
+
+                <Button type="submit" size="lg" className="w-full" variant="secondary" disabled={submitting || !termsAccepted}>
                   {submitting ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -648,7 +679,7 @@ const DonateBook = () => {
                         <div className="w-full sm:w-48 h-48 bg-muted relative shrink-0">
                           {book.image_urls && book.image_urls[0] ? (
                             <img
-                              src={book.image_urls[0]}
+                              src={getFullApiUrl(book.image_urls[0])}
                               alt={book.title}
                               className="w-full h-full object-cover"
                             />

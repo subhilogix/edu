@@ -25,4 +25,4 @@ async def upload_file(file_bytes: bytes, path: str, content_type: str):
         with open(local_path, "wb") as f:
             f.write(file_bytes)
             
-        return f"http://localhost:8000/static/uploads/{filename}"
+        return f"/static/uploads/{filename}"
