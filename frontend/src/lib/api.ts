@@ -200,7 +200,7 @@ export const requestsApi = {
   updateStatus: async (requestId: string, status: string) => {
     // Assuming backend has a generic update status endpoint or we use specific ones
     // For rejection, we'll just implement it now in backend too
-    return apiRequest(`/requests/${requestId}/status`, {
+    return apiRequest(`/requests/${requestId}/status/`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
@@ -330,7 +330,7 @@ export const authApi = {
   },
 
   getCurrentUser: async () => {
-    return apiRequest('/auth/me');
+    return apiRequest('/auth/me/');
   },
 
   sendOtp: async (email: string) => {
@@ -355,7 +355,7 @@ export const authApi = {
   },
 
   loginWithPassword: async (email: string, password: string) => {
-    return apiRequest('/auth/login', {
+    return apiRequest('/auth/login/', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });

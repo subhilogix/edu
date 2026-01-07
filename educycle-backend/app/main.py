@@ -6,13 +6,22 @@ from app.api import auth, books, requests, chats, notes, ngo, feedback, impact, 
 app = FastAPI(
     title="EduCycle Backend",
     version="1.0.0",
-    description="Backend APIs for EduCycle platform"
+    description="Backend APIs for EduCycle platform",
+    redirect_slashes=False  # Crucial: prevents 400/307 on OPTIONS requests
 )
 
 # CORS (frontend will call this)
+import os
+origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+allowed_origins = [o.strip().rstrip("/") for o in origins_str.split(",") if o.strip()]
+
+print(f"--- ALLOWED ORIGINS: {allowed_origins} ---")
+
+# If "*" is in the list, we MUST set allow_credentials=False for it to work in browsers,
+# or better yet, explicitly list the origins.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
