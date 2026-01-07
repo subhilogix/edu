@@ -57,9 +57,12 @@ const Header = ({ userType: propUserType, userName: propUserName }: HeaderProps)
           }
           className="flex items-center gap-2 group"
         >
-          <div className="relative">
-            <BookOpen className="h-8 w-8 text-primary transition-transform group-hover:scale-110" />
-            <Leaf className="h-4 w-4 text-success absolute -bottom-1 -right-1 animate-bounce-soft" />
+          <div className="relative w-10 h-10 overflow-hidden rounded-lg">
+            <img
+              src="/logo.png"
+              alt="EduCycle Logo"
+              className="w-full h-full object-cover transition-transform group-hover:scale-110"
+            />
           </div>
           <span className="font-display text-2xl font-bold">
             Edu<span className="text-primary">Cycle</span>

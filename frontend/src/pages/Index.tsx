@@ -324,9 +324,12 @@ const Index = () => {
 
           <div className="container relative py-16 md:py-24">
             <div className="max-w-3xl mx-auto text-center space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 text-success text-sm font-medium animate-fade-in">
-                <Leaf className="h-4 w-4" />
-                <span>Join 10,000+ students saving books & the planet</span>
+              <div className="inline-flex flex-col items-center gap-4 animate-fade-in">
+                <img src="/logo.png" alt="EduCycle Logo" className="w-24 h-24 rounded-2xl shadow-lg border-2 border-primary/20" />
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 text-success text-sm font-medium">
+                  <Leaf className="h-4 w-4" />
+                  <span>Join 10,000+ students saving books & the planet</span>
+                </div>
               </div>
 
               <h1 className="text-4xl md:text-6xl font-display font-bold leading-tight animate-slide-up">

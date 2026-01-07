@@ -191,44 +191,7 @@ export const mockRequests: Request[] = [
 ];
 
 // Mock Notes Data
-export const mockNotes: Note[] = [
-  {
-    id: 'note1',
-    title: 'CBSE Class 10 Math Formulas',
-    subject: 'Mathematics',
-    class: '10',
-    type: 'PDF',
-    downloads: 1250,
-    uploadDate: '2024-01-10',
-  },
-  {
-    id: 'note2',
-    title: 'Physics Chapter Summaries',
-    subject: 'Science',
-    class: '12',
-    type: 'Notes',
-    downloads: 890,
-    uploadDate: '2024-01-08',
-  },
-  {
-    id: 'note3',
-    title: 'English Grammar Quick Guide',
-    subject: 'English',
-    class: '9',
-    type: 'PDF',
-    downloads: 2100,
-    uploadDate: '2024-01-05',
-  },
-  {
-    id: 'note4',
-    title: 'Chemistry Reactions List',
-    subject: 'Science',
-    class: '11',
-    type: 'PDF',
-    downloads: 756,
-    uploadDate: '2024-01-12',
-  },
-];
+export const mockNotes: Note[] = [];
 
 // Mock Chat Messages
 export const mockChatMessages: ChatMessage[] = [
