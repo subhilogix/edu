@@ -10,8 +10,12 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 def log_debug(msg):
-    with open("otp_debug.log", "a") as f:
-        f.write(f"{datetime.utcnow().isoformat()} - {msg}\n")
+    print(f"OTP_DEBUG: {msg}") # Always print to logs
+    try:
+        with open("otp_debug.log", "a") as f:
+            f.write(f"{datetime.utcnow().isoformat()} - {msg}\n")
+    except Exception:
+        pass # Ignore file errors in production environments
 
 async def send_otp_email(email: str):
     """
@@ -57,13 +61,19 @@ async def send_otp_email(email: str):
         message.add_alternative(content, subtype="html")
         
         try:
+            # Port 465 uses direct TLS, Port 587 uses STARTTLS
+            use_tls = settings.SMTP_PORT == 465
+            start_tls = settings.SMTP_PORT == 587
+            
             await aiosmtplib.send(
                 message,
                 hostname=settings.SMTP_HOST,
                 port=settings.SMTP_PORT,
                 username=settings.SMTP_USER,
                 password=settings.SMTP_PASSWORD,
-                start_tls=True if settings.SMTP_PORT == 587 else False,
+                use_tls=use_tls,
+                start_tls=start_tls,
+                timeout=15.0 # Add a specific timeout
             )
             logger.info(f"Real OTP email sent to {email}")
         except Exception as e:

@@ -122,3 +122,6 @@
 2026-01-02T09:05:27.638641 - FOUND DOC: stored_otp=[340872]
 2026-01-02T09:05:27.638970 - SUCCESS: OTP match successful for contact@techforall.org
 2026-01-02T09:05:28.159727 - DELETED OTP for [contact@techforall.org]
+2026-01-08T05:37:02.932142 - SENDING OTP: email=[csrajan_18au@rediffmail.com], otp=[243576]
+2026-01-08T05:39:10.832848 - SENDING OTP: email=[edu.cycle2026@gmail.com], otp=[357350]
+2026-01-08T05:39:41.806189 - SENDING OTP: email=[edu.cycle2026@gmail.com], otp=[627456]
