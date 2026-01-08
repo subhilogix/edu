@@ -1,3 +1,4 @@
+import os
 import random
 import string
 import logging
@@ -35,14 +36,8 @@ async def send_otp_email(email: str):
         "created_at": datetime.utcnow()
     })
     
-    # Send real email if configured
-    if settings.SMTP_USER and settings.SMTP_PASSWORD:
-        message = EmailMessage()
-        message["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
-        message["To"] = email
-        message["Subject"] = f"{otp} is your EduCycle verification code"
-        
-        content = f"""
+    # Define email content (available for both methods)
+    content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; rounded: 8px;">
@@ -58,8 +53,43 @@ async def send_otp_email(email: str):
             </body>
         </html>
         """
+
+    # 1. Try Resend API (Most reliable for production, uses HTTPS Port 443)
+    resend_key = os.getenv("RESEND_API_KEY")
+    if resend_key:
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                res = await client.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {resend_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "from": f"{settings.EMAILS_FROM_NAME} <onboarding@resend.dev>",
+                        "to": [email],
+                        "subject": f"{otp} is your EduCycle verification code",
+                        "html": content,
+                    },
+                    timeout=10.0
+                )
+                if res.status_code in [200, 201]:
+                    logger.info(f"OTP email sent via RESEND API to {email}")
+                    return True
+                else:
+                    logger.error(f"Resend API failed: {res.text}")
+        except Exception as e:
+            logger.error(f"Failed to send via Resend API: {e}")
+
+    # 2. Fallback to SMTP (Often blocked in production)
+    if settings.SMTP_USER and settings.SMTP_PASSWORD:
+        message = EmailMessage()
+        message["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
+        message["To"] = email
+        message["Subject"] = f"{otp} is your EduCycle verification code"
         message.add_alternative(content, subtype="html")
-        
+
         try:
             # Port 465 uses direct TLS, Port 587 uses STARTTLS
             use_tls = settings.SMTP_PORT == 465
@@ -73,12 +103,12 @@ async def send_otp_email(email: str):
                 password=settings.SMTP_PASSWORD,
                 use_tls=use_tls,
                 start_tls=start_tls,
-                timeout=15.0 # Add a specific timeout
+                timeout=15.0 
             )
             logger.info(f"Real OTP email sent to {email}")
+            return True
         except Exception as e:
             logger.error(f"Failed to send real email to {email}: {e}")
-            # Still print to console as fallback
             print(f"⚠️ SMTP FAILED: {e}")
     
     # ALWAYS log to console for development/debug
