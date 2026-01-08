@@ -6,3 +6,6 @@
 serviceAccountKey.json
 educycle-backend/serviceAccountKey.json
 educycle-backend/app/static/uploads/
+__pycache__/
+*.pyc
+*.log

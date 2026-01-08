@@ -1,4 +1,3 @@
-import os
 import random
 import string
 import logging
@@ -36,8 +35,14 @@ async def send_otp_email(email: str):
         "created_at": datetime.utcnow()
     })
     
-    # Define email content (available for both methods)
-    content = f"""
+    # Send real email if configured
+    if settings.SMTP_USER and settings.SMTP_PASSWORD:
+        message = EmailMessage()
+        message["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
+        message["To"] = email
+        message["Subject"] = f"{otp} is your EduCycle verification code"
+        
+        content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; rounded: 8px;">
@@ -53,7 +58,8 @@ async def send_otp_email(email: str):
             </body>
         </html>
         """
-
+        message.add_alternative(content, subtype="html")
+        
     # 1. Try Resend API (Most reliable for production, uses HTTPS Port 443)
     resend_key = os.getenv("RESEND_API_KEY")
     if resend_key:
@@ -67,7 +73,7 @@ async def send_otp_email(email: str):
                         "Content-Type": "application/json",
                     },
                     json={
-                        "from": f"{settings.EMAILS_FROM_NAME} <onboarding@resend.dev>",
+                        "from": f"{settings.EMAILS_FROM_NAME} <onboarding@resend.dev>", # Use their default for testing
                         "to": [email],
                         "subject": f"{otp} is your EduCycle verification code",
                         "html": content,
@@ -84,12 +90,6 @@ async def send_otp_email(email: str):
 
     # 2. Fallback to SMTP (Often blocked in production)
     if settings.SMTP_USER and settings.SMTP_PASSWORD:
-        message = EmailMessage()
-        message["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
-        message["To"] = email
-        message["Subject"] = f"{otp} is your EduCycle verification code"
-        message.add_alternative(content, subtype="html")
-
         try:
             # Port 465 uses direct TLS, Port 587 uses STARTTLS
             use_tls = settings.SMTP_PORT == 465
